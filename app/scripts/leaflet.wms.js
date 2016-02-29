@@ -72,13 +72,6 @@ wms.Source = L.Layer.extend({
         }
     },
 
-    'setOpacity': function(opacity) {
-         this.options.opacity = opacity;
-         if (this._overlay) {
-             this._overlay.setOpacity(opacity);
-         }
-    },
-
     'getLayer': function(name) {
         return wms.layer(this, name);
     },
@@ -164,8 +157,8 @@ wms.Source = L.Layer.extend({
         var infoParams = {
             'request': 'GetFeatureInfo',
             'query_layers': layers.join(','),
-            'X': Math.round(point.x),
-            'Y': Math.round(point.y)
+            'X': point.x,
+            'Y': point.y
         };
         return L.extend({}, wmsParams, infoParams);
     },
@@ -232,9 +225,6 @@ wms.Layer = L.Layer.extend({
     },
     'onRemove': function() {
         this._source.removeSubLayer(this._name);
-    },
-    'setOpacity': function(opacity) {
-        this._source.setOpacity(opacity);
     }
 });
 
@@ -357,13 +347,6 @@ wms.Overlay = L.Layer.extend({
                 this.options.opacity ? this.options.opacity : 1
             );
         }
-    },
-
-    'setOpacity': function(opacity) {
-         this.options.opacity = opacity;
-         if (this._currentOverlay) {
-             this._currentOverlay.setOpacity(opacity);
-         }
     },
 
     // See L.TileLayer.WMS: onAdd() & getTileUrl()
