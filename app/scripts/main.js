@@ -86,16 +86,18 @@ autocomplete.addListener('place_changed', function() {
 		var lng = place.geometry.location.lng(),
 			lat = place.geometry.location.lat();
 		map.setView([lat, lng], 12);
-		console.log(place.geometry)
 	}
 });
 
 //Do the mappy stuff part two. Find some layers and map them.
-var clickMarker;
 var currentLayer = "tidetech:air_temperature_degC";
 var currentLayerTitle = "Air Temperature (Celcius)";
 
-function handleJson(data, coords) {
+
+var clickMarker = new L.marker();
+var clickLatLon = new L.latLng();
+
+function handleJson(data) {
     var text = '<div class="table-responsive"><table class="table table-condensed">',
     	u = null,
     	v = null;
@@ -122,18 +124,24 @@ function handleJson(data, coords) {
     }
     text = text + '</table></div>'
     
-    clickMarker = new L.marker(coords).addTo(map).bindPopup(text).openPopup();
-}
-
-map.on('click', function(e) {
+    var newMarker = new L.marker(clickLatLon).addTo(map).bindPopup(text).openPopup();
     if (clickMarker) {
         map.removeLayer(clickMarker);
     };
+    clickMarker = newMarker;
+}
+
+function updateMarker() {
+	if (clickMarker) {
+        map.removeLayer(clickMarker);
+    };
+	var	lng = clickLatLon.lng,
+    	lat = clickLatLon.lat;
     
-    var queryCoordinates = e.latlng,
-    	lng = queryCoordinates.lng,
-    	lat = queryCoordinates.lat;
-    
+    if (typeof lng == 'undefined') {
+    	return;
+    }
+
     var parameters = {
         service : 'WMS',
         version : '1.1.1',
@@ -148,7 +156,8 @@ map.on('click', function(e) {
         height: 101,
         x: 50,
         y: 50,
-        bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1)
+        bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1),
+        time: overlay.wmsParams.time
     };
     var url = owsurl + L.Util.getParamString(parameters)
     //console.log(url);
@@ -157,9 +166,19 @@ map.on('click', function(e) {
         dataType : 'jsonp',
         jsonpCallback : 'getJson',
         success : function(data) {
-            handleJson(data, queryCoordinates);
+            handleJson(data);
         }
     });
+}
+
+map.on('click', function(e) {
+    if (clickMarker) {
+        map.removeLayer(clickMarker);
+    };
+    
+    clickLatLon = e.latlng;
+
+    updateMarker()
 });
 
 function pad(num, size) {
@@ -197,16 +216,19 @@ var overlay = L.WMS.overlay(owsurl, {
 overlay.addTo(map);
 
 //Initialize the SliderControl with the WMS layer, a start time, an end time, and time step
-var sliderControl = L.control.sliderControl({position: 'bottomright', layer: overlay, startTime: startTime, endTime: endTime, timeStep: timeStep});
+var sliderControl = L.control.sliderControl({
+	position: 'bottomright', 
+	layer: overlay, 
+	startTime: startTime, 
+	endTime: endTime, 
+	timeStep: timeStep
+});
 
 // Add the slider to the map
-map.addControl(sliderControl);
+map.addControl(sliderControl, clickMarker);
 
 // Start the slider
 sliderControl.startSlider();
-
-var sliderControl = L.control.sliderControl({position: 'topright', layer: overlay, startTime: startTime, endTime: endTime, timeStep: timeStep*1000});
-
 
 /*
 $.ajax({
