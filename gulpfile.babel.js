@@ -78,23 +78,29 @@ gulp.task('fonts', () => {
 gulp.task('extras', () => {
   return gulp.src([
     'app/*.*',
-    '!app/*.html',
-    '/bower_components/leaflet/images/*'
+    '!app/*.html'
   ], {
     dot: true
   }).pipe(gulp.dest('dist'));
 });
 
+gulp.task('leaflet-images', function() {
+   gulp.src('./bower_components/leaflet/dist/images/*.png')
+   .pipe(gulp.dest('dist/scripts/images'))
+   .pipe(gulp.dest('.tmp/scripts/images'));
+});
+
 gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
 
-gulp.task('serve', ['styles', 'scripts', 'fonts'], () => {
+gulp.task('serve', ['styles', 'scripts', 'fonts', 'leaflet-images'], () => {
   browserSync({
     notify: false,
     port: 9000,
     server: {
       baseDir: ['.tmp', 'app'],
       routes: {
-        '/bower_components': 'bower_components'
+        '/bower_components': 'bower_components',
+        '/images': '/bower_components/leaflet/dist/images'
       }
     }
   });
@@ -150,7 +156,7 @@ gulp.task('wiredep', () => {
     .pipe(gulp.dest('app'));
 });
 
-gulp.task('build', ['html', 'images', 'fonts', 'extras'], () => {
+gulp.task('build', ['html', 'images', 'fonts', 'extras', 'leaflet-images'], () => {
   return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 
@@ -162,7 +168,9 @@ gulp.task('deploy', ['build'], () => {
   // create a new publisher
   const publisher = $.awspublish.create({
     region: 'ap-southeast-2',
-    bucket: 'maps-client.tidetech.org'
+    params: {
+      Bucket: 'maps-client.tidetech.org'
+    }
   });
 
   // define custom headers

@@ -2,6 +2,9 @@ const 	server = "http://wms.tidetech.org",
 	    owsurl = server + '/geoserver/ows',
 	    tt_att = 'data &copy TideTech';
 
+//Leaflet images config:
+L.Icon.Default.imagePath = './scripts/images'
+
 $("#full-extent-btn").click(function() {
 	map.fitBounds(boroughs.getBounds());
 	$(".navbar-collapse.in").collapse("hide");
