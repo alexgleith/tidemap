@@ -89,7 +89,6 @@ L.Control.SliderControl = L.Control.extend({
   },
 
   updateLayer: function(timestamps) {
-    updateMarker()
     var timestamp = timestamps[0] + '/' + timestamps[1];
     
     if (this.multilayer == true) {
@@ -103,6 +102,7 @@ L.Control.SliderControl = L.Control.extend({
         time: timestamp
       });
     }
+    updateMarker()
   },
   
   updateTimestamp: function(timestamps) {
@@ -110,7 +110,7 @@ L.Control.SliderControl = L.Control.extend({
     var tSplit = timestamps[0].split('T');
     var date = tSplit[0];
     var time = tSplit[1].split(':')[0]+':00';
-    var timeText = 'Date: ' + date + ' Time: ' + time;
+    var timeText = 'Date: ' + date + ' Time: ' + time + ' UTC';
     $(this._sliderTimestamp).html(timeText);
   },
   

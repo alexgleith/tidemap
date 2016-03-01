@@ -205,7 +205,7 @@ function updateMarker() {
         bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1)
     };
     if(supportsTime) {
-    	parameters.time = overlay.wmsParams.time;
+    	parameters.time = overlay.wmsParams.time.split('/')[0];
     };
     var url = owsurl + L.Util.getParamString(parameters)
     $.ajax({
