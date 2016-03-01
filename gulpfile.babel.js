@@ -55,7 +55,9 @@ gulp.task('html', ['styles', 'scripts'], () => {
 });
 
 gulp.task('images', () => {
-  return gulp.src('app/images/**/*')
+  return gulp.src([
+    'app/images/**/*'
+    ])
     .pipe($.cache($.imagemin({
       progressive: true,
       interlaced: true,
@@ -76,7 +78,8 @@ gulp.task('fonts', () => {
 gulp.task('extras', () => {
   return gulp.src([
     'app/*.*',
-    '!app/*.html'
+    '!app/*.html',
+    '/bower_components/leaflet/images/*'
   ], {
     dot: true
   }).pipe(gulp.dest('dist'));

@@ -1,4 +1,4 @@
-const 	server = "http://wms-master.tidetech.org",
+const 	server = "http://wms.tidetech.org",
 	    owsurl = server + '/geoserver/ows',
 	    tt_att = 'data &copy TideTech';
 
@@ -24,6 +24,40 @@ $("#login-btn").click(function() {
 	$(".navbar-collapse.in").collapse("hide");
 	return false;
 });
+
+$("#about-btn").click(function() {
+	$("#aboutModal").modal("show");
+	$(".navbar-collapse.in").collapse("hide");
+	return false;
+});
+
+$("#legend-btn").click(function() {
+	$("#legendModal").modal("show");
+	$(".navbar-collapse.in").collapse("hide");
+	return false;
+});
+
+$(document).on("click", ".feature-row", function(e) {
+	loadDataProduct($(this).attr('id'));
+});
+
+//Searching for layers
+$(document).ready(function () {
+    (function ($) {
+        $('#layerfilter').keyup(function () {
+            var rex = new RegExp($(this).val(), 'i');
+            $('.searchable tr').hide();
+            $('.searchable tr').filter(function () {
+                return rex.test($(this).text());
+            }).show();
+        })
+    }(jQuery));
+});
+$("#searchclear").click(function(){
+    $("#layerfilter").val('');
+    $('.searchable tr').show();
+});
+
 
 //Do the map thing!
 var gray = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -65,7 +99,7 @@ var lc = L.control.locate({
 map.on('dragstart', lc._stopFollowing, lc);
 
 //Layer control
-L.control.layers(baseMaps, {}).addTo(map);
+L.control.layers(baseMaps, {}, {collapsed: false}).addTo(map);
 
 //Google Places Autocomplete
 var input = /** @type {!HTMLInputElement} */(
@@ -90,14 +124,18 @@ autocomplete.addListener('place_changed', function() {
 });
 
 //Do the mappy stuff part two. Find some layers and map them.
-var currentLayer = "tidetech:air_temperature_degC";
-var currentLayerTitle = "Air Temperature (Celcius)";
-
-
-var clickMarker = new L.marker();
-var clickLatLon = new L.latLng();
+var sliderControl,
+	overlay,
+	supportsTime = false,
+	dataProducts = [],
+	currentLayer = null,
+	clickMarker = null,
+	clickLatLng = null;
 
 function handleJson(data) {
+	if(!data || data.features.length < 1){
+		return;
+	}
     var text = '<div class="table-responsive"><table class="table table-condensed">',
     	u = null,
     	v = null;
@@ -124,19 +162,24 @@ function handleJson(data) {
     }
     text = text + '</table></div>'
     
-    var newMarker = new L.marker(clickLatLon).addTo(map).bindPopup(text).openPopup();
-    if (clickMarker) {
-        map.removeLayer(clickMarker);
-    };
-    clickMarker = newMarker;
+    //var newMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
+    if (clickMarker && clickMarker.getLatLng().equals(clickLatLng)) {
+    	console.log(text)
+    	clickMarker.setPopupContent(text);
+    } else {
+    	if(clickMarker) {
+    		map.removeLayer(clickMarker);
+    	};
+    	clickMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
+    }
 }
 
 function updateMarker() {
-	if (clickMarker) {
-        map.removeLayer(clickMarker);
-    };
-	var	lng = clickLatLon.lng,
-    	lat = clickLatLon.lat;
+    if(!overlay || !clickLatLng){
+    	return;
+    }
+	var	lng = clickLatLng.lng,
+    	lat = clickLatLng.lat;
     
     if (typeof lng == 'undefined') {
     	return;
@@ -156,11 +199,12 @@ function updateMarker() {
         height: 101,
         x: 50,
         y: 50,
-        bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1),
-        time: overlay.wmsParams.time
+        bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1)
+    };
+    if(supportsTime) {
+    	parameters.time = overlay.wmsParams.time;
     };
     var url = owsurl + L.Util.getParamString(parameters)
-    //console.log(url);
     $.ajax({
         url : owsurl + L.Util.getParamString(parameters),
         dataType : 'jsonp',
@@ -172,65 +216,20 @@ function updateMarker() {
 }
 
 map.on('click', function(e) {
-    if (clickMarker) {
-        map.removeLayer(clickMarker);
-    };
-    
-    clickLatLon = e.latlng;
-
+    clickLatLng = e.latlng;
     updateMarker()
 });
 
-function pad(num, size) {
-    var s = num+"";
-    while (s.length < size) s = "0" + s;
-    return s;
+//Load all the data products
+function buildListOfData() {
+	for (var i = dataProducts.length - 1; i >= 0; i--) {
+		var dp = dataProducts[i];
+		$("#feature-list tbody").append('<tr class="feature-row" id="' + dp.name + '|' + i +
+			'"><td class="feature-name">' + dp.title + 
+			'</td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
+	};
 }
 
-Date.prototype.addDays = function(days) {
-    var dat = new Date();
-    dat.setDate(dat.getDate() + days);
-    return dat;
-}
-
-var today = new Date();
-var dd = today.getDate();
-var mm = today.getMonth()+1;
-var yyyy = today.getFullYear();
-
-
-var later = today.addDays(14);
-var dd2 = later.getDate();
-var mm2 = later.getMonth()+1;
-var yyyy2 = later.getFullYear();
-
-var startTime = yyyy+'-'+pad(mm,2)+'-'+pad(dd,2)+'T18:00:00.000';
-var endTime = yyyy2+'-'+pad(mm2,2)+'-'+pad(dd2,2)+'T18:00:00.000';
-var timeStep = 60*60*6;
-
-var overlay = L.WMS.overlay(owsurl, {
-    'layers': currentLayer,
-    'transparent': true,
-    'opacity': 0.4
-});
-overlay.addTo(map);
-
-//Initialize the SliderControl with the WMS layer, a start time, an end time, and time step
-var sliderControl = L.control.sliderControl({
-	position: 'bottomright', 
-	layer: overlay, 
-	startTime: startTime, 
-	endTime: endTime, 
-	timeStep: timeStep
-});
-
-// Add the slider to the map
-map.addControl(sliderControl, clickMarker);
-
-// Start the slider
-sliderControl.startSlider();
-
-/*
 $.ajax({
   type: "GET",
   url: owsurl + "?SERVICE=WMS&request=getcapabilities",
@@ -239,23 +238,71 @@ $.ajax({
 });
 
 function parseXml(xml) {
-  var layerIndex = 0
-  $(xml).find("Layer").find("Layer").each(function() {
-    var title = $(this).find("Title").first().text();
-    var name = $(this).find("Name").first().text();
-    if(name === 'tidetech:air_temperature') {
-      var time = $(this).find("Dimension");
-      console.log(time.text());
-    }
-    //Check for layer groups
-    var patt = new RegExp("Group");
-    var res = patt.test(title);
-    if(!res) {
-      featureLayers.push(name)
-      featureLayersName.push(title)
-    }
-  });
+ 	$(xml).find("Layer").find("Layer").each(function() {
+		var thisDataProduct = {};
+	    var title = $(this).find("Title").first().text();
+	    var name = $(this).find("Name").first().text();
+	  	var time = $(this).find("Dimension").text().split(',');
+
+	    //Check for layer groups
+	    var patt = new RegExp("Group");
+	    var res = patt.test(title);
+	    thisDataProduct.title = title;
+	    thisDataProduct.name = name;
+	    thisDataProduct.time = time;
+
+	    dataProducts.push(thisDataProduct);
+  	});
+  	buildListOfData();
 }
-*/
+
+function loadDataProduct(dataProductID) {
+	var dataProduct = dataProducts[dataProductID.split('|')[1]];
+	currentLayer = dataProduct.name;
+
+	//Remove the existing items
+	if(sliderControl) {
+		sliderControl.removeFrom(map);
+	}
+	if(overlay) {
+		overlay.removeFrom(map);
+	}
+	if(clickMarker) {
+		map.removeLayer(clickMarker);
+	}
+
+	//Add the layer to the map
+	overlay = L.WMS.overlay(owsurl, {
+	    'layers': dataProduct.name,
+	    'transparent': true,
+	    'opacity': 0.4
+	}).addTo(map);
+
+	//Check if we've got to do time, and if so, work it out
+	var timeSteps = dataProduct.time;
+
+	if(timeSteps.length > 1) {
+		supportsTime = true;
+		var startTime = timeSteps[0].split('/')[0],
+			timeTwo = timeSteps[1].split('/')[0],
+			endTime = timeSteps[timeSteps.length-1].split('/')[0],
+			d1 = new Date(startTime),
+	    	d2 = new Date(timeTwo),
+			timeStep = (d2-d1)/1000;
+
+		//Initialize the SliderControl with the WMS layer, a start time, an end time, and time step
+		var sliderControl = L.control.sliderControl({
+			position: 'bottomright', 
+			layer: overlay, 
+			startTime: startTime, 
+			endTime: endTime, 
+			timeStep: timeStep
+		});
+
+		// Add the slider to the map
+		map.addControl(sliderControl);
+		sliderControl.startSlider();
+	}
+}
 
 
