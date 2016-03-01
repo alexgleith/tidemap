@@ -21,7 +21,7 @@ L.Control.SliderControl = L.Control.extend({
     // requested to separate each position
     this._begin_time = new Date(options.startTime);
     this._final_time = new Date(options.endTime);
-    
+
     // assume timeStep is in seconds and turn into microseconds
     this.options.timeStep = this.options.timeStep * 1000;
     
@@ -68,6 +68,7 @@ L.Control.SliderControl = L.Control.extend({
 
     var sliderContainer = this.createSliderUI();
     // Prevent map panning/zooming while using the slider
+    L.DomEvent.disableClickPropagation(sliderContainer);
     $(sliderContainer).mousedown(function() {
       map.dragging.disable();
     });
@@ -88,6 +89,7 @@ L.Control.SliderControl = L.Control.extend({
   },
 
   updateLayer: function(timestamps) {
+    updateMarker()
     var timestamp = timestamps[0] + '/' + timestamps[1];
     
     if (this.multilayer == true) {
