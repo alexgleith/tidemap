@@ -8,7 +8,8 @@
     "jquery-ui": "jqueryui#^1.11.4",
     "components-font-awesome": "^4.5.0",
     "leaflet.locatecontrol": "^0.48.0",
-    "leaflet.wms": "^0.1.0"
+    "leaflet.wms": "^0.1.0",
+    "jquery-ui-touch-punch": "*"
   },
   "overrides": {
     "bootstrap": {
