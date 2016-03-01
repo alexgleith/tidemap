@@ -3,7 +3,7 @@
   "private": true,
   "dependencies": {
     "bootstrap": "~3.3.5",
-    "leaflet": "1.0.0-beta.2",
+    "leaflet": "~1.0.0",
     "jquery": "^2.2.1",
     "jquery-ui": "jqueryui#^1.11.4",
     "components-font-awesome": "^4.5.0",
@@ -19,10 +19,19 @@
         "dist/js/bootstrap.js",
         "dist/fonts/*"
       ]
+    },
+    "leaflet.locatecontrol": {
+      "dependencies": {}
+    },
+    "leaflet.w,s": {
+      "dependencies": {}
     }
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "mocha": "^2.4.5"
+  },
+  "resolutions": {
+    "leaflet": "~1.0.0"
   }
 }
