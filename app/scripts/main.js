@@ -1,5 +1,5 @@
-const 	server = "http://wms.tidetech.org",
-	    owsurl = server + '/geoserver/ows',
+const 	server = "http://wms-master.tidetech.org",
+	    owsurl = server + '/geoserver/tidetech/ows',
 	    tt_att = 'data &copy TideTech';
 
 //Leaflet images config:
@@ -159,9 +159,9 @@ function handleJson(data) {
     if(u && v) {
         var dir_rads = Math.atan2(u,v);
         if(dir_rads < 0) {dir_rads = dir_rads + (2 * Math.PI);}
-        dir_deg = dir_rads * (180/Math.PI)
+        var dir_deg = dir_rads * (180/Math.PI)
 
-        text = text + "<b>direction:</b> " + dir_deg.toFixed(0) + '<br>';
+        text = text + "<tr><td>direction</td><td>" + dir_deg.toFixed(0) + '</td>';
     }
     text = text + '</table></div>'
     
