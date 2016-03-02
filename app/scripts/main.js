@@ -265,7 +265,7 @@ function loadDataProduct(dataProductID) {
 
 	//Remove the existing items
 	if(sliderControl) {
-		sliderControl.removeFrom(map);
+		sliderControl.remove();
 	}
 	if(overlay) {
 		overlay.removeFrom(map);
@@ -294,7 +294,7 @@ function loadDataProduct(dataProductID) {
 			timeStep = (d2-d1)/1000;
 
 		//Initialize the SliderControl with the WMS layer, a start time, an end time, and time step
-		var sliderControl = L.control.sliderControl({
+		sliderControl = L.control.sliderControl({
 			position: 'bottomright', 
 			layer: overlay, 
 			startTime: startTime, 
