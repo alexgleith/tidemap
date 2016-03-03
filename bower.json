@@ -3,13 +3,14 @@
   "private": true,
   "dependencies": {
     "bootstrap": "~3.3.5",
-    "leaflet": "~1.0.0",
+    "leaflet": "0.7.7",
     "jquery": "^2.2.1",
     "jquery-ui": "jqueryui#^1.11.4",
     "components-font-awesome": "^4.5.0",
     "leaflet.locatecontrol": "^0.48.0",
-    "leaflet.wms": "^0.1.0",
-    "jquery-ui-touch-punch": "*"
+    "jquery-ui-touch-punch": "*",
+    "Leaflet.NonTiledLayer": "https://github.com/ptv-logistics/Leaflet.NonTiledLayer.git#^0.7.3",
+    "iso8601-js-period": "*"
   },
   "overrides": {
     "bootstrap": {
@@ -30,8 +31,5 @@
   "devDependencies": {
     "chai": "^3.5.0",
     "mocha": "^2.4.5"
-  },
-  "resolutions": {
-    "leaflet": "~1.0.0"
   }
 }

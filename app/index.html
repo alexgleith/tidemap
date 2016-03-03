@@ -19,6 +19,7 @@
     <!-- endbuild -->
 
     <!-- build:css styles/main.css -->
+    <link rel="stylesheet" href="styles/leaflet.timedimension.control.css" />
     <link rel="stylesheet" href="styles/main.css">
     <!-- endbuild -->
     
@@ -173,8 +174,8 @@
     <script src="/bower_components/leaflet/dist/leaflet-src.js"></script>
     <script src="/bower_components/jquery-ui/jquery-ui.js"></script>
     <script src="/bower_components/leaflet.locatecontrol/src/L.Control.Locate.js"></script>
-    <script src="/bower_components/leaflet.wms/leaflet.wms.js"></script>
     <script src="/bower_components/jquery-ui-touch-punch/jquery.ui.touch-punch.min.js"></script>
+    <script src="/bower_components/iso8601-js-period/iso8601.min.js"></script>
     <!-- endbower -->    
     <!-- endbuild -->
 
@@ -186,8 +187,15 @@
     <script src="/bower_components/bootstrap/js/modal.js"></script>
     <script src="/bower_components/bootstrap/js/transition.js"></script>
     <script src="/bower_components/bootstrap/js/button.js"></script>
-    <script src="scripts/leaflet.lwts.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
+    <script src="/bower_components/jquery-ui-touch-punch/jquery.ui.touch-punch.js"></script>
+    <script src="scripts/leaflet-nontiledlayer/non-tiledlayer.js"></script>
+    <script src="scripts/leaflet-nontiledlayer/non-tiledlayer.wms.js"></script>
+    <script src="scripts/leaflet-timedimension/leaflet.timedimension.js"></script>
+    <script src="scripts/leaflet-timedimension/leaflet.timedimension.util.js"></script>
+    <script src="scripts/leaflet-timedimension/leaflet.timedimension.layer.js"></script>
+    <script src="scripts/leaflet-timedimension/leaflet.timedimension.layer.wms.js"></script>
+    <script src="scripts/leaflet-timedimension/leaflet.timedimension.player.js"></script>
+    <script src="scripts/leaflet-timedimension/leaflet.timedimension.control.js"></script>
     <!-- endbuild -->
     
     <!-- build:js scripts/main.js -->
