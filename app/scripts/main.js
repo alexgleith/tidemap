@@ -89,7 +89,21 @@ var map = L.map("map", {
 	center: center,
 	layers: [gray],
 	zoomControl: true,
-	attributionControl: false
+	attributionControl: false,
+    timeDimension: true,
+    timeDimensionControl: false,
+    timeDimensionControlOptions: {
+        autoPlay: false,
+        loopButton: true,
+        timeSteps: 1,
+        playReverseButton: false,
+        limitSliders: true,
+        playerOptions: {
+            buffer: 3,
+            transitionTime: 250,
+            loop: true,
+        }
+    },
 });
 
 //Locate control
@@ -127,8 +141,9 @@ autocomplete.addListener('place_changed', function() {
 });
 
 //Do the mappy stuff part two. Find some layers and map them.
-var sliderControl,
+var timeControl,
 	overlay,
+	timeOverlay,
 	supportsTime = false,
 	dataProducts = [],
 	currentLayer = null,
@@ -167,7 +182,6 @@ function handleJson(data) {
     
     //var newMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
     if (clickMarker && clickMarker.getLatLng().equals(clickLatLng)) {
-    	console.log(text)
     	clickMarker.setPopupContent(text);
     } else {
     	if(clickMarker) {
@@ -205,7 +219,8 @@ function updateMarker() {
         bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1)
     };
     if(supportsTime) {
-    	parameters.time = overlay.wmsParams.time.split('/')[0];
+    	var time = new Date(map.timeDimension.getCurrentTime())
+    	parameters.time = time.toISOString();
     };
     var url = owsurl + L.Util.getParamString(parameters)
     $.ajax({
@@ -223,6 +238,21 @@ map.on('click', function(e) {
     updateMarker()
 });
 
+map.timeDimension.on('timeload', function(e) {
+	updateMarker();
+});
+
+map.on('movestart', function(e) {
+	if(supportsTime) {
+		timeControl._player.pause();
+	}
+});
+
+map.on('moveend', function(e) {
+	if(supportsTime) {
+		timeControl._player.continue();
+	}
+})
 //Load all the data products
 function buildListOfData() {
 	for (var i = dataProducts.length - 1; i >= 0; i--) {
@@ -260,52 +290,54 @@ function parseXml(xml) {
 }
 
 function loadDataProduct(dataProductID) {
+	supportsTime = false;
 	var dataProduct = dataProducts[dataProductID.split('|')[1]];
 	currentLayer = dataProduct.name;
 
 	//Remove the existing items
-	if(sliderControl) {
-		sliderControl.remove();
-	}
 	if(overlay) {
-		overlay.removeFrom(map);
+		map.removeLayer(overlay);
+		overlay = null;
+	}
+	if(timeOverlay) {
+		map.removeLayer(timeOverlay);
+		timeOverlay = null;
 	}
 	if(clickMarker) {
 		map.removeLayer(clickMarker);
 	}
+	try {
+		map.removeControl(timeControl);
+	} catch (e) {
+		//do nothing
+	}
 
-	//Add the layer to the map
-	overlay = L.WMS.overlay(owsurl, {
-	    'layers': dataProduct.name,
-	    'transparent': true,
-	    'opacity': 0.4
-	}).addTo(map);
+	overlay = new L.NonTiledLayer.WMS(owsurl, {
+        opacity: 0.4,
+        layers: currentLayer,
+        format: 'image/png',
+        transparent: true,
+        attribution: tt_att
+    });
 
 	//Check if we've got to do time, and if so, work it out
 	var timeSteps = dataProduct.time;
 
 	if(timeSteps.length > 1) {
 		supportsTime = true;
-		var startTime = timeSteps[0].split('/')[0],
-			timeTwo = timeSteps[1].split('/')[0],
-			endTime = timeSteps[timeSteps.length-1].split('/')[0],
-			d1 = new Date(startTime),
-	    	d2 = new Date(timeTwo),
-			timeStep = (d2-d1)/1000;
+		var timeStepsForMap = [];
+		for (var i = timeSteps.length - 1; i >= 0; i--) {
+			var oneStep = new Date(timeSteps[i].split('/')[0]).getTime();
+			timeStepsForMap.push(oneStep);
+		}
 
-		//Initialize the SliderControl with the WMS layer, a start time, an end time, and time step
-		sliderControl = L.control.sliderControl({
-			position: 'bottomright', 
-			layer: overlay, 
-			startTime: startTime, 
-			endTime: endTime, 
-			timeStep: timeStep
-		});
+		map.timeDimension.setAvailableTimes(timeStepsForMap,'replace');
 
-		// Add the slider to the map
-		map.addControl(sliderControl);
-		sliderControl.startSlider();
+		timeControl = L.control.timeDimension().addTo(map);
+
+		timeOverlay = L.timeDimension.layer.wms(overlay, {
+		}).addTo(map);
+	} else {
+		overlay.addTo(map);
 	}
 }
-
-
