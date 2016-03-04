@@ -1,8 +1,10 @@
 const 	server = "http://wms-master.tidetech.org",
 	    owsurl = server + '/geoserver/tidetech/ows',
-	    tt_att = 'data &copy TideTech';
+	    tt_att = 'data &copy TideTech',
+        ignoreValues = ['u','v','U_GRD','V_GRD'];
 
 var initialLayer = getParameterByName('layer');
+var initialBaseLayer = getParameterByName('baseLayer');
 
 //Leaflet images config:
 L.Icon.Default.imagePath = './scripts/images'
@@ -87,10 +89,14 @@ var baseMaps = {
 var center = new L.LatLng(20.38582, 29.35546),
 	startZoom = 3;
 
+if(!initialBaseLayer) {
+    initialBaseLayer = "Grayscale";
+};
+
 var map = L.map("map", {
 	zoom: startZoom,
 	center: center,
-	layers: [gray],
+	layers: baseMaps[initialBaseLayer],
 	zoomControl: true,
 	attributionControl: false,
     timeDimension: true,
@@ -177,30 +183,18 @@ function handleJson(data) {
 	if(!data || data.features.length < 1){
 		return;
 	}
-    var text = '<div class="table-responsive"><table class="table table-condensed">',
-    	u = null,
-    	v = null;
+    var text = '<div class="table-responsive"><table class="table table-condensed">';
 	text = text + '<tr><th>Attribute</th><th>Value</th></tr>'
     var thisFeatureProperties = data.features[0].properties;
     for (var i = data.features.length - 1; i >= 0; i--) {
         thisFeatureProperties = data.features[i].properties;
         Object.keys(thisFeatureProperties).forEach(function(key,index) {
-            if (key === 'u') {
-                u = thisFeatureProperties[key];
-            } else if (key === 'v') {
-                v = thisFeatureProperties[key];
-            } else {
+            var ignore = $.inArray(key, ignoreValues);
+            if(ignore === -1) {
                 text = text + "<tr><td>" + key.split(':')[0] + "</td><td>" + thisFeatureProperties[key].toFixed(2) + '</td>';
             }
         });
     };
-    if(u && v) {
-        var dir_rads = Math.atan2(u,v);
-        if(dir_rads < 0) {dir_rads = dir_rads + (2 * Math.PI);}
-        var dir_deg = dir_rads * (180/Math.PI)
-
-        text = text + "<tr><td>direction</td><td>" + dir_deg.toFixed(0) + '</td>';
-    }
     text = text + '</table></div>'
     
     //var newMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
@@ -256,6 +250,15 @@ function updateMarker() {
     });
 }
 
+map.on('popupclose', function(e) {
+    if(clickMarker) {
+        map.removeLayer(clickMarker);
+    };
+    if(clickLatLng) {
+        clickLatLng = null;
+    }
+})
+
 map.on('click', function(e) {
     clickLatLng = e.latlng;
     updateMarker()
@@ -275,6 +278,10 @@ map.on('moveend', function(e) {
 	if(supportsTime) {
 		timeControl._player.continue();
 	}
+});
+
+map.on('baselayerchange', function(e) {
+    setParameter('baseLayer', e.name);
 })
 //Load all the data products
 function buildListOfData() {
@@ -386,10 +393,10 @@ function loadDataProduct(dataProductID) {
             playReverseButton: false,
             limitSliders: true,
             playerOptions: {
-                buffer: 10,
+                buffer: 20,
                 transitionTime: 500,
                 loop: true,
-                minBufferReady: 5
+                minBufferReady: 10
             }
         }).addTo(map);
 
