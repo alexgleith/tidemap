@@ -2,6 +2,8 @@ const 	server = "http://wms-master.tidetech.org",
 	    owsurl = server + '/geoserver/tidetech/ows',
 	    tt_att = 'data &copy TideTech';
 
+var initialLayer = getParameterByName('layer');
+
 //Leaflet images config:
 L.Icon.Default.imagePath = './scripts/images'
 
@@ -56,6 +58,7 @@ $(document).ready(function () {
         })
     }(jQuery));
 });
+
 $("#searchclear").click(function(){
     $("#layerfilter").val('');
     $('.searchable tr').show();
@@ -91,19 +94,7 @@ var map = L.map("map", {
 	zoomControl: true,
 	attributionControl: false,
     timeDimension: true,
-    timeDimensionControl: false,
-    timeDimensionControlOptions: {
-        autoPlay: false,
-        loopButton: true,
-        timeSteps: 1,
-        playReverseButton: false,
-        limitSliders: true,
-        playerOptions: {
-            buffer: 3,
-            transitionTime: 250,
-            loop: true,
-        }
-    },
+    timeDimensionControl: false
 });
 
 //Locate control
@@ -139,6 +130,38 @@ autocomplete.addListener('place_changed', function() {
 		map.setView([lat, lng], 12);
 	}
 });
+
+//get and set URL parameters
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+function setParameter(paramName, paramValue) {
+    var url = window.location.href;
+    var hash = location.hash;
+    url = url.replace(hash, '');
+    if (url.indexOf(paramName + "=") >= 0)
+    {
+        var prefix = url.substring(0, url.indexOf(paramName));
+        var suffix = url.substring(url.indexOf(paramName));
+        suffix = suffix.substring(suffix.indexOf("=") + 1);
+        suffix = (suffix.indexOf("&") >= 0) ? suffix.substring(suffix.indexOf("&")) : "";
+        url = prefix + paramName + "=" + paramValue + suffix;
+    }
+    else
+    {
+    if (url.indexOf("?") < 0)
+        url += "?" + paramName + "=" + paramValue;
+    else
+        url += "&" + paramName + "=" + paramValue;
+    }
+    window.history.replaceState({},"", url + hash);
+}
 
 //Do the mappy stuff part two. Find some layers and map them.
 var timeControl,
@@ -257,7 +280,7 @@ map.on('moveend', function(e) {
 function buildListOfData() {
 	for (var i = dataProducts.length - 1; i >= 0; i--) {
 		var dp = dataProducts[i];
-		$("#feature-list tbody").append('<tr class="feature-row" id="' + dp.name + '|' + i +
+		$("#feature-list tbody").append('<tr class="feature-row" id="' + i +
 			'"><td class="feature-name">' + dp.title + 
 			'</td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
 	};
@@ -275,23 +298,46 @@ function parseXml(xml) {
 		var thisDataProduct = {};
 	    var title = $(this).find("Title").first().text();
 	    var name = $(this).find("Name").first().text();
-	  	var time = $(this).find("Dimension").text().split(',');
+        var west = $(this).find("westBoundLongitude").text(),
+            east = $(this).find("eastBoundLongitude").text(),
+            south = $(this).find("southBoundLatitude").text(),
+            north = $(this).find("northBoundLatitude").text();
+        var subLayers = $(this).find("Layer");
+
+        var time = $(this).find("Dimension").text().split(',');
+        if(subLayers.length > 0) {
+            //we've got sublayers, so see if there's any time dimensions on there and make an assumption! (Pick the first one.)
+            time = subLayers.find("Dimension").text().split(',');
+        };
 
 	    //Check for layer groups
 	    var patt = new RegExp("Group");
 	    var res = patt.test(title);
+        var southWest = L.latLng(south, west),
+            northEast = L.latLng(north, east),
+            bounds = L.latLngBounds(southWest, northEast);
 	    thisDataProduct.title = title;
 	    thisDataProduct.name = name;
 	    thisDataProduct.time = time;
+        thisDataProduct.bounds = bounds;
 
 	    dataProducts.push(thisDataProduct);
   	});
+    //Build the nice UI sidebar table list thing.
   	buildListOfData();
+    //Check for initial layer, and if requested, load it.
+    if(initialLayer) {
+        for (var i = dataProducts.length - 1; i >= 0; i--) {
+            if(dataProducts[i].name === initialLayer) {
+                loadDataProduct(i);
+            }
+        }
+    }
 }
 
 function loadDataProduct(dataProductID) {
 	supportsTime = false;
-	var dataProduct = dataProducts[dataProductID.split('|')[1]];
+	var dataProduct = dataProducts[dataProductID];
 	currentLayer = dataProduct.name;
 
 	//Remove the existing items
@@ -333,11 +379,30 @@ function loadDataProduct(dataProductID) {
 
 		map.timeDimension.setAvailableTimes(timeStepsForMap,'replace');
 
-		timeControl = L.control.timeDimension().addTo(map);
+		timeControl = L.control.timeDimension({
+            autoPlay: false,
+            loopButton: true,
+            timeSteps: 1,
+            playReverseButton: false,
+            limitSliders: true,
+            playerOptions: {
+                buffer: 10,
+                transitionTime: 500,
+                loop: true,
+                minBufferReady: 5
+            }
+        }).addTo(map);
 
 		timeOverlay = L.timeDimension.layer.wms(overlay, {
 		}).addTo(map);
 	} else {
 		overlay.addTo(map);
 	}
+    //Finally, zoom to the area if it's small.
+    var width = dataProduct.bounds.getEast() - dataProduct.bounds.getWest();
+    if(width < 350) {
+        map.fitBounds(dataProduct.bounds);
+    }
+    //and set the URL
+    setParameter('layer',dataProduct.name)
 }
