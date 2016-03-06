@@ -1,4 +1,4 @@
-const 	server = "http://wms-master.tidetech.org",
+const 	server = "http://wms.tidetech.org",
 	    owsurl = server + '/geoserver/tidetech/ows',
 	    tt_att = 'data &copy TideTech',
         ignoreValues = ['u','v','U_GRD','V_GRD'];
@@ -203,6 +203,7 @@ function handleJson(data) {
     } else {
     	if(clickMarker) {
     		map.removeLayer(clickMarker);
+            clickMarker = null;
     	};
     	clickMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
     }
