@@ -156,3 +156,4 @@ body {
     display: none !important;
   }
 }
+.modal-backdrop {background: none;}
