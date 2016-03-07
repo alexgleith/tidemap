@@ -26,4 +26,3 @@ I'm a little unclear of exactly what is required, but you definitely need to [in
 * AUTHENTICATION!
 
 ## Notes
-* There's a bit of dependency stuff going on with Leaflet. We're using the dev version (1.0.0-beta.2) and this works fine. One package wants 0.7.7 (stable) and another wants 1.0.0:master (dev branch). I've set up a 'resolution' in bower.json that means we use Leaflet 1.0.0-beta.2, and we're good to go, but `bower install` complains. Let's fix this later, when Leaflet 1.0.0 is released and all our packages are happy with it.
