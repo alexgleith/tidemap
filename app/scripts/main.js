@@ -1,17 +1,37 @@
-const 	server = "http://wms.tidetech.org",
-	    owsurl = server + '/geoserver/tidetech/ows',
+const 	defaultServer = "http://wms.tidetech.org",
 	    tt_att = 'data &copy TideTech',
-        ignoreValues = ['u','v','U_GRD','V_GRD'];
+        ignoreValues = ['u','v','U_GRD','V_GRD', 'UGRDWV', 'VGRDWV'];
 
-var initialLayer = getParameterByName('layer');
-var initialBaseLayer = getParameterByName('baseLayer');
+var initialLayer = getParameterByName('layer'),
+    initialBaseLayer = getParameterByName('baseLayer'),
+    initialServer = getParameterByName('server');
+ 
+
+var server, owsurl;
+
+if(initialServer) {
+    server = initialServer;
+} else {
+    server = defaultServer;
+}
+owsurl = server + "/geoserver/tidetech/ows";
+
+var opacity = 1.0;
+
+//Get out list of layers really early.
+$.ajax({
+    type: "GET",
+    url: owsurl + "?SERVICE=WMS&request=getcapabilities",
+    dataType: "xml",
+    success: parseXml
+});
 
 //Leaflet images config:
 L.Icon.Default.imagePath = './scripts/images'
 
 $("#full-extent-btn").click(function() {
-	map.fitBounds(boroughs.getBounds());
-	$(".navbar-collapse.in").collapse("hide");
+  $(".navbar-collapse.in").collapse("hide");
+	map.fitBounds(currentBounds);
 	return false;
 });
 
@@ -22,26 +42,44 @@ $("#list-btn").click(function() {
 });
 
 $("#sidebar-hide-btn").click(function() {
-	$('#sidebar').hide();
+  $(".navbar-collapse.in").collapse("hide");
+    $('#sidebar').hide();
 	map.invalidateSize();
 });
 
 $("#login-btn").click(function() {
+  $(".navbar-collapse.in").collapse("hide");
 	$("#loginModal").modal("show");
-	$(".navbar-collapse.in").collapse("hide");
 	return false;
 });
 
+$("#settings-btn").click(function() {
+  $(".navbar-collapse.in").collapse("hide");
+    $("#settingsModal").modal("show");
+    return false;
+});
+
 $("#about-btn").click(function() {
+  $(".navbar-collapse.in").collapse("hide");
 	$("#aboutModal").modal("show");
-	$(".navbar-collapse.in").collapse("hide");
 	return false;
 });
 
 $("#legend-btn").click(function() {
-	$("#legendModal").modal("show");
-	$(".navbar-collapse.in").collapse("hide");
-	return false;
+  $(".navbar-collapse.in").collapse("hide");
+    $("#legendModal").modal("show");
+    return false;
+});
+
+$("#nav-btn").click(function() {
+  $(".navbar-collapse").collapse("toggle");
+  return false;
+});
+
+$("#sidebar-toggle-btn").click(function() {
+  $("#sidebar").toggle();
+  map.invalidateSize();
+  return false;
 });
 
 $(document).on("click", ".feature-row", function(e) {
@@ -51,13 +89,23 @@ $(document).on("click", ".feature-row", function(e) {
 //Searching for layers
 $(document).ready(function () {
     (function ($) {
+        $("a#opacityChange").on('click', function(e) {
+            opacity = e.target.text;
+            $("#opacityMenu").text(opacity);
+            if(supportsTime) {
+                if(timeOverlay) {timeOverlay.setOpacity(opacity);};
+            } else {
+                if(overlay) {overlay.setOpacity(opacity);};
+            }
+            return false;
+        });
         $('#layerfilter').keyup(function () {
             var rex = new RegExp($(this).val(), 'i');
             $('.searchable tr').hide();
             $('.searchable tr').filter(function () {
                 return rex.test($(this).text());
             }).show();
-        })
+        });
     }(jQuery));
 });
 
@@ -65,7 +113,6 @@ $("#searchclear").click(function(){
     $("#layerfilter").val('');
     $('.searchable tr').show();
 });
-
 
 //Do the map thing!
 var gray = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -87,7 +134,10 @@ var baseMaps = {
 };
 
 var center = new L.LatLng(20.38582, 29.35546),
-	startZoom = 3;
+	startZoom = 3,
+    p1 = L.latLng(74.01954, 142.38281),
+    p2 = L.latLng(-57.61010, -83.67185),
+    initialBounds = L.latLngBounds(p1, p2);
 
 if(!initialBaseLayer) {
     initialBaseLayer = "Grayscale";
@@ -175,7 +225,9 @@ var timeControl,
 	timeOverlay,
 	supportsTime = false,
 	dataProducts = [],
+    currentBounds = initialBounds,
 	currentLayer = null,
+    currentLayerID = null,
 	clickMarker = null,
 	clickLatLng = null;
 
@@ -284,6 +336,7 @@ map.on('moveend', function(e) {
 map.on('baselayerchange', function(e) {
     setParameter('baseLayer', e.name);
 })
+
 //Load all the data products
 function buildListOfData() {
 	for (var i = dataProducts.length - 1; i >= 0; i--) {
@@ -294,12 +347,26 @@ function buildListOfData() {
 	};
 }
 
-$.ajax({
-  type: "GET",
-  url: owsurl + "?SERVICE=WMS&request=getcapabilities",
-  dataType: "xml",
-  success: parseXml
-});
+function filterDataProductsInGroup() {
+    var allSubLayers = [];
+    for (var i = dataProducts.length - 1; i >= 0; i--) {
+        var item = dataProducts[i];
+        if(item.subLayerNames.length > 0) {
+            for (var j = item.subLayerNames.length - 1; j >= 0; j--) {
+                allSubLayers.push(item.subLayerNames[j]);
+            }
+        }
+    }
+    for (var i = allSubLayers.length - 1; i >= 0; i--) {
+        var subLayerName = allSubLayers[i];
+        for (var j = dataProducts.length - 1; j >= 0; j--) {
+            if(dataProducts[j].name === subLayerName) {
+                var temp = dataProducts[j].name;
+                dataProducts.splice(j, 1);
+            }
+        }
+    }
+}
 
 function parseXml(xml) {
  	$(xml).find("Layer").find("Layer").each(function() {
@@ -310,13 +377,16 @@ function parseXml(xml) {
             east = $(this).find("eastBoundLongitude").text(),
             south = $(this).find("southBoundLatitude").text(),
             north = $(this).find("northBoundLatitude").text();
-        var subLayers = $(this).find("Layer");
 
         var time = $(this).find("Dimension").text().split(',');
-        if(subLayers.length > 0) {
-            //we've got sublayers, so see if there's any time dimensions on there and make an assumption! (Pick the first one.)
-            time = subLayers.find("Dimension").text().split(',');
-        };
+        var subLayerNames = [];
+
+        //Handle sublayers
+        var subLayers = $(this).find("Layer").each(function() {
+            time = $(this).find("Dimension").text().split(',');
+            subLayerNames.push($(this).find("Name").first().text());
+        });
+        thisDataProduct.subLayerNames = subLayerNames;
 
 	    //Check for layer groups
 	    var patt = new RegExp("Group");
@@ -331,6 +401,8 @@ function parseXml(xml) {
 
 	    dataProducts.push(thisDataProduct);
   	});
+    //Filter out layers that are in a group.
+    filterDataProductsInGroup();
     //Build the nice UI sidebar table list thing.
   	buildListOfData();
     //Check for initial layer, and if requested, load it.
@@ -343,9 +415,11 @@ function parseXml(xml) {
     }
 }
 
-function loadDataProduct(dataProductID) {
-	supportsTime = false;
-	var dataProduct = dataProducts[dataProductID];
+function loadDataProduct(dataProductID) {  
+    var dataProduct = dataProducts[dataProductID];
+    supportsTime = false;
+    
+    currentLayerID = dataProductID;
 	currentLayer = dataProduct.name;
 
 	//Remove the existing items
@@ -367,7 +441,7 @@ function loadDataProduct(dataProductID) {
 	}
 
 	overlay = new L.NonTiledLayer.WMS(owsurl, {
-        opacity: 0.4,
+        opacity: opacity,
         layers: currentLayer,
         format: 'image/png',
         transparent: true,
@@ -394,19 +468,19 @@ function loadDataProduct(dataProductID) {
             playReverseButton: false,
             limitSliders: true,
             playerOptions: {
-                buffer: 20,
+                buffer: 25,
                 transitionTime: 500,
                 loop: true,
-                minBufferReady: 10
+                minBufferReady: 20
             }
         }).addTo(map);
 
-		timeOverlay = L.timeDimension.layer.wms(overlay, {
-		}).addTo(map);
+		timeOverlay = L.timeDimension.layer.wms(overlay, {}).addTo(map);
 	} else {
 		overlay.addTo(map);
 	}
     //Finally, zoom to the area if it's small.
+    currentBounds = dataProduct.bounds;
     var width = dataProduct.bounds.getEast() - dataProduct.bounds.getWest();
     if(width < 350) {
         map.fitBounds(dataProduct.bounds);
