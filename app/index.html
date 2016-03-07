@@ -33,8 +33,8 @@
       <div class="container-fluid">
         <div class="navbar-header">
           <div class="navbar-icon-container">
-            <a href="#" class="navbar-icon pull-right visible-xs" id="nav-btn"><i class="fa fa-bars fa-lg light-blue"></i></a>
-            <a href="#" class="navbar-icon pull-right visible-xs" id="sidebar-toggle-btn"><i class="fa fa-search fa-lg light-blue"></i></a>
+            <a href="#" class="navbar-icon pull-right visible-xs" id="nav-btn"><i class="fa fa-bars fa-lg light-blue"></i></a> 
+            <a href="#" class="navbar-icon pull-right visible-xs" id="sidebar-toggle-btn"><i class="fa fa-list-alt fa-lg light-blue"></i></a>
           </div>
           <a class="navbar-brand" href="#">Tidemap</a>
         </div>
@@ -52,11 +52,12 @@
               <ul class="dropdown-menu">
                 <li><a href="#" data-toggle="collapse" data-target=".navbar-collapse.in" id="full-extent-btn"><i class="fa fa-arrows-alt"></i>&nbsp;&nbsp;Zoom To Full Extent</a></li>
                 <li><a href="#" data-toggle="collapse" data-target=".navbar-collapse.in" id="legend-btn"><i class="fa fa-picture-o"></i>&nbsp;&nbsp;Show Legend</a></li>
+                <li><a href="#" data-toggle="collapse" data-target=".navbar-collapse.in" id="settings-btn"><i class="fa fa-cogs"></i>&nbsp;&nbsp;Settings</a></li>
                 <li class="divider hidden-xs"></li>
                 <li><a href="#" data-toggle="collapse" data-target=".navbar-collapse.in" id="login-btn"><i class="fa fa-user"></i>&nbsp;&nbsp;Login</a></li>
               </ul>
             </li>
-            <li class="hidden-xs"><a href="#" data-toggle="collapse" data-target=".navbar-collapse.in" id="list-btn"><i class="fa fa-list light-blue"></i>&nbsp;&nbsp;Data products list</a></li>
+            <li class="hidden-xs"><a href="#" data-toggle="collapse" data-target=".navbar-collapse.in" id="list-btn"><i class="fa fa-list-alt light-blue"></i>&nbsp;&nbsp;Data products list</a></li>
           </ul>
         </div><!--/.navbar-collapse -->
       </div>
@@ -156,6 +157,38 @@
       </div><!-- /.modal-dialog -->
     </div><!-- /.modal -->
 
+    <div class="modal fade" id="settingsModal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-md">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title">Settings</h4>
+          </div>
+          <div class="modal-body">
+            <p>Opacity</p>
+            <div class="btn-group">
+            <button class="btn btn-default dropdown-toggle" type="button" id="opacityMenu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+              1.0
+              <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" style="background-color: white" aria-labelledby="opacityMenu">
+              <li><a href="#" id="opacityChange">0.1</a></li>
+              <li><a href="#" id="opacityChange">0.2</a></li>
+              <li><a href="#" id="opacityChange">0.3</a></li>
+              <li><a href="#" id="opacityChange">0.4</a></li>
+              <li><a href="#" id="opacityChange">0.5</a></li>
+              <li><a href="#" id="opacityChange">0.6</a></li>
+              <li><a href="#" id="opacityChange">0.7</a></li>
+              <li><a href="#" id="opacityChange">0.8</a></li>
+              <li><a href="#" id="opacityChange">0.9</a></li>
+              <li><a href="#" id="opacityChange">1.0</a></li>
+            </ul>
+          </div>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
     <!-- Many thanks to http://bryanmcbride.com for a lot of the guts of this -->
     
     <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
@@ -189,7 +222,7 @@
     <script src="/bower_components/bootstrap/js/modal.js"></script>
     <script src="/bower_components/bootstrap/js/transition.js"></script>
     <script src="/bower_components/bootstrap/js/button.js"></script>
-    <script src="/bower_components/jquery-ui-touch-punch/jquery.ui.touch-punch.js"></script>
+    <script src="/bower_components/bootstrap/js/collapse.js"></script>
     <script src="scripts/leaflet-nontiledlayer/non-tiledlayer.js"></script>
     <script src="scripts/leaflet-nontiledlayer/non-tiledlayer.wms.js"></script>
     <script src="scripts/leaflet-timedimension/leaflet.timedimension.js"></script>
