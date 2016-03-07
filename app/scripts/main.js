@@ -165,9 +165,10 @@ map.on('dragstart', lc._stopFollowing, lc);
 //Layer control
 L.control.layers(baseMaps, {}, {collapsed: false}).addTo(map);
 
+
 //Google Places Autocomplete
-var input = /** @type {!HTMLInputElement} */(
-    document.getElementById('searchbox'));
+var input = (
+document.getElementById('searchbox'));
 var autocomplete = new google.maps.places.Autocomplete(input);
 autocomplete.addListener('place_changed', function() {
 	var place = autocomplete.getPlace();
@@ -303,6 +304,7 @@ function updateMarker() {
     });
 }
 
+//Event responses.
 map.on('popupclose', function(e) {
     if(clickMarker) {
         map.removeLayer(clickMarker);
@@ -323,13 +325,13 @@ map.timeDimension.on('timeload', function(e) {
 
 map.on('movestart', function(e) {
 	if(supportsTime) {
-		timeControl._player.pause();
+		timeControl._player.stop();
 	}
 });
 
 map.on('moveend', function(e) {
 	if(supportsTime) {
-		timeControl._player.continue();
+		timeControl._player.start();
 	}
 });
 
@@ -415,29 +417,35 @@ function parseXml(xml) {
     }
 }
 
-function loadDataProduct(dataProductID) {  
+function loadDataProduct(dataProductID) {
+    //Don't do anything if we've already loaded this layer
+    if(currentLayerID === dataProductID) {return;}
+    //Load the dataproduct details
     var dataProduct = dataProducts[dataProductID];
+    //Store some variables
     supportsTime = false;
     
     currentLayerID = dataProductID;
 	currentLayer = dataProduct.name;
 
-	//Remove the existing items
+    //Remove the existing items
+    try {
+        timeControl._player.stop();
+        map.removeControl(timeControl);
+    } catch (e) {
+        //do nothing
+    }
 	if(overlay) {
 		map.removeLayer(overlay);
 		overlay = null;
 	}
 	if(timeOverlay) {
+        map.timeDimension.unregisterSyncedLayer(timeOverlay);
 		map.removeLayer(timeOverlay);
 		timeOverlay = null;
 	}
 	if(clickMarker) {
 		map.removeLayer(clickMarker);
-	}
-	try {
-		map.removeControl(timeControl);
-	} catch (e) {
-		//do nothing
 	}
 
 	overlay = new L.NonTiledLayer.WMS(owsurl, {
@@ -479,6 +487,7 @@ function loadDataProduct(dataProductID) {
 	} else {
 		overlay.addTo(map);
 	}
+
     //Finally, zoom to the area if it's small.
     currentBounds = dataProduct.bounds;
     var width = dataProduct.bounds.getEast() - dataProduct.bounds.getWest();
