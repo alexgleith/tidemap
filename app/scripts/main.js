@@ -157,10 +157,9 @@ var map = L.map("map", {
 var lc = L.control.locate({
     locateOptions: {
         maxZoom: 8,
-        follow: true
+        follow: false
     }
 }).addTo(map);
-map.on('dragstart', lc._stopFollowing, lc);
 
 //Layer control
 L.control.layers(baseMaps, {}, {collapsed: false}).addTo(map);
@@ -325,13 +324,13 @@ map.timeDimension.on('timeload', function(e) {
 
 map.on('movestart', function(e) {
 	if(supportsTime) {
-		timeControl._player.stop();
+		timeControl._player.pause();
 	}
 });
 
 map.on('moveend', function(e) {
 	if(supportsTime) {
-		timeControl._player.start();
+		timeControl._player.continue();
 	}
 });
 
@@ -466,7 +465,6 @@ function loadDataProduct(dataProductID) {
 			var oneStep = new Date(timeSteps[i].split('/')[0]).getTime();
 			timeStepsForMap.push(oneStep);
 		}
-
 		map.timeDimension.setAvailableTimes(timeStepsForMap,'replace');
 
 		timeControl = L.control.timeDimension({
