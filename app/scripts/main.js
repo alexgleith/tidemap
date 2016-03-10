@@ -1,6 +1,6 @@
 const 	defaultServer = "http://wms.tidetech.org",
 	    tt_att = 'data &copy TideTech',
-        ignoreValues = ['u','v','U_GRD','V_GRD', 'UGRDWV', 'VGRDWV'];
+        ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'];
 
 var initialLayer = getParameterByName('layer'),
     initialBaseLayer = getParameterByName('baseLayer'),
@@ -18,7 +18,7 @@ owsurl = server + "/geoserver/tidetech/ows";
 
 var opacity = 1.0;
 
-//Get out list of layers really early.
+//Get our list of layers really early.
 $.ajax({
     type: "GET",
     url: owsurl + "?SERVICE=WMS&request=getcapabilities",
@@ -83,7 +83,13 @@ $("#sidebar-toggle-btn").click(function() {
 });
 
 $(document).on("click", ".feature-row", function(e) {
+    $(this).addClass('info').siblings().removeClass('info');
 	loadDataProduct($(this).attr('id'));
+    var width = (window.innerWidth > 0) ? window.innerWidth : screen.width;
+    if (width < 600) {
+        $('#sidebar').hide();
+        map.invalidateSize();
+    }
 });
 
 //Searching for layers
@@ -116,21 +122,31 @@ $("#searchclear").click(function(){
 
 //Do the map thing!
 var gray = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'basemap: Esri, HERE, DeLorme, MapmyIndia, &copy OpenStreetMap contributors, and the GIS user community'
+    attribution: 'basemap: Esri, HERE, DeLorme, MapmyIndia, &copy OpenStreetMap contributors, and the GIS user community',
+    noWrap: true
 });
 
 var oceans = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'basemap: Esri, DeLorme, GEBCO, NOAA NGDC, and other contributors'
+    attribution: 'basemap: Esri, DeLorme, GEBCO, NOAA NGDC, and other contributors',
+    noWrap: true
 });
 
 var imagery = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye'
+    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
+    noWrap: true
+});
+
+var polestarBase = L.tileLayer.wms('https://wms-1.lrit.com/cmapwms/map.cnx?', {
+    layers: 'MAINMAP',
+    attribution: 'Polestar',
+    noWrap: true
 });
 
 var baseMaps = {
     "Grayscale": gray,
     "Oceans": oceans,
-    "Imagery": imagery
+    "Imagery": imagery,
+    "Polestar": polestarBase
 };
 
 var center = new L.LatLng(20.38582, 29.35546),
@@ -149,8 +165,28 @@ var map = L.map("map", {
 	layers: baseMaps[initialBaseLayer],
 	zoomControl: true,
 	attributionControl: false,
+    maxBoundsViscosity: 1.0,
     timeDimension: true,
-    timeDimensionControl: false
+    timeDimensionControlOptions: {
+        autoPlay: false,
+        timeSteps: 1,
+        playReverseButton: false,
+        limitSliders: true,
+        playButton: false,
+        loopButton: false,
+        displayDate: true,
+        timeSlider: true,
+        limitSliders: false,
+        limitMinimumRange: 5,
+        speedSlider: false,
+        playerOptions: {
+            transitionTime: 500,
+            buffer: 5,
+            minBufferReady: 1,
+            loop: true
+        }
+    },
+    timeDimensionControl: true
 });
 
 //Locate control
@@ -163,7 +199,6 @@ var lc = L.control.locate({
 
 //Layer control
 L.control.layers(baseMaps, {}, {collapsed: false}).addTo(map);
-
 
 //Google Places Autocomplete
 var input = (
@@ -305,9 +340,13 @@ function updateMarker() {
 
 //Event responses.
 map.on('popupclose', function(e) {
-    if(clickMarker) {
+
+    try {
         map.removeLayer(clickMarker);
-    };
+        clickMarker = null;
+    } catch (e) {
+        //do nothing
+    }
     if(clickLatLng) {
         clickLatLng = null;
     }
@@ -321,7 +360,7 @@ map.on('click', function(e) {
 map.timeDimension.on('timeload', function(e) {
 	updateMarker();
 });
-
+/*
 map.on('movestart', function(e) {
 	if(supportsTime) {
 		timeControl._player.pause();
@@ -333,6 +372,7 @@ map.on('moveend', function(e) {
 		timeControl._player.continue();
 	}
 });
+*/
 
 map.on('baselayerchange', function(e) {
     setParameter('baseLayer', e.name);
@@ -340,6 +380,11 @@ map.on('baselayerchange', function(e) {
 
 //Load all the data products
 function buildListOfData() {
+    dataProducts.sort(function(a, b) {
+        var textA = a.title.toUpperCase();
+        var textB = b.title.toUpperCase();
+        return (textA > textB) ? -1 : (textA < textB) ? 1 : 0;
+    });
 	for (var i = dataProducts.length - 1; i >= 0; i--) {
 		var dp = dataProducts[i];
 		$("#feature-list tbody").append('<tr class="feature-row" id="' + i +
@@ -428,23 +473,24 @@ function loadDataProduct(dataProductID) {
 	currentLayer = dataProduct.name;
 
     //Remove the existing items
-    try {
+    /*try {
         timeControl._player.stop();
         map.removeControl(timeControl);
     } catch (e) {
         //do nothing
+    }*/
+    if(clickMarker) {
+        map.removeLayer(clickMarker);
+        clickMarker = null;
+        clickLatLng = null;
     }
 	if(overlay) {
 		map.removeLayer(overlay);
 		overlay = null;
 	}
 	if(timeOverlay) {
-        map.timeDimension.unregisterSyncedLayer(timeOverlay);
 		map.removeLayer(timeOverlay);
 		timeOverlay = null;
-	}
-	if(clickMarker) {
-		map.removeLayer(clickMarker);
 	}
 
 	overlay = new L.NonTiledLayer.WMS(owsurl, {
@@ -452,7 +498,8 @@ function loadDataProduct(dataProductID) {
         layers: currentLayer,
         format: 'image/png',
         transparent: true,
-        attribution: tt_att
+        attribution: tt_att,
+        noWrap: true
     });
 
 	//Check if we've got to do time, and if so, work it out
@@ -466,7 +513,8 @@ function loadDataProduct(dataProductID) {
 			timeStepsForMap.push(oneStep);
 		}
 		map.timeDimension.setAvailableTimes(timeStepsForMap,'replace');
-
+        map.timeDimension.setCurrentTimeIndex(0)
+        /*
 		timeControl = L.control.timeDimension({
             autoPlay: false,
             loopButton: true,
@@ -480,9 +528,12 @@ function loadDataProduct(dataProductID) {
                 minBufferReady: 20
             }
         }).addTo(map);
+        */
 
 		timeOverlay = L.timeDimension.layer.wms(overlay, {}).addTo(map);
 	} else {
+        map.timeDimension.setAvailableTimes([],'replace');
+        map.timeDimension.setCurrentTimeIndex(0)
 		overlay.addTo(map);
 	}
 

@@ -230,6 +230,7 @@ L.Control.TimeDimension = L.Control.extend({
         if (this._sliderTime) {
             this._sliderTime.options.rangeMax = max;
             this._sliderTime._update();
+            this._update();
         }
     },
 
