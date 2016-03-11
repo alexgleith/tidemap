@@ -1,20 +1,27 @@
 const 	defaultServer = "http://wms.tidetech.org",
 	    tt_att = 'data &copy TideTech',
-        ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'];
+        ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'],
+        defaultWorkspace = 'tidetech';
 
 var initialLayer = getParameterByName('layer'),
     initialBaseLayer = getParameterByName('baseLayer'),
+    initialWorkspace = getParameterByName('workspace'),
     initialServer = getParameterByName('server');
  
-
-var server, owsurl;
+var server, owsurl, workspace;
 
 if(initialServer) {
     server = initialServer;
 } else {
     server = defaultServer;
 }
-owsurl = server + "/geoserver/tidetech/ows";
+if(initialWorkspace) {
+    workspace = initialWorkspace;
+} else {
+    workspace = defaultWorkspace;
+}
+
+owsurl = server + "/geoserver/"+workspace+"/ows";
 
 var opacity = 1.0;
 
@@ -67,8 +74,16 @@ $("#about-btn").click(function() {
 
 $("#legend-btn").click(function() {
   $(".navbar-collapse.in").collapse("hide");
-    $("#legendModal").modal("show");
-    return false;
+  var text = "";
+  if(currentLayerID) {
+    text += "<b>" + dataProducts[currentLayerID].title + 
+    "</b><br><img src="+owsurl+"?service=wms&request=getlegendgraphic&layer=" + 
+    dataProducts[currentLayerID].name + "&format=image/png&LEGEND_OPTIONS=forceLabels:on onError=\"this.parentNode.removeChild(this)\"><br>";
+  }
+  text += "<p>Note that some layers do not currently have a legend.</p>"
+  $("#legend").html(text);
+  $('#legendModal').modal('show');
+  return false;
 });
 
 $("#nav-btn").click(function() {
@@ -121,7 +136,8 @@ $("#searchclear").click(function(){
 });
 
 //Do the map thing!
-var gray = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+/*
+var ESRIgray = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'basemap: Esri, HERE, DeLorme, MapmyIndia, &copy OpenStreetMap contributors, and the GIS user community',
     noWrap: true
 });
@@ -131,41 +147,89 @@ var oceans = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/Oc
     noWrap: true
 });
 
-var imagery = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+var ESRIimagery = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
     noWrap: true
 });
-
+*/
+/*
 var polestarBase = L.tileLayer.wms('https://wms-1.lrit.com/cmapwms/map.cnx?', {
     layers: 'MAINMAP',
     attribution: 'Polestar',
     noWrap: true
 });
+*/
 
+//mapbox://styles/tidetech/cilmwyp07001i9klyi7lcskzp
+
+//mapbox://styles/tidetech/ciln08d8d002u9nkukp904hog
+
+var mapboxToken = 'pk.eyJ1IjoidGlkZXRlY2giLCJhIjoiY2lsbjA2YjJiMDA1ZnVobTF0anV3ZG95MSJ9.srurUP-3MjppGVxp5UlySQ';
+var oldToken = 'pk.eyJ1IjoidGlkZXRlY2giLCJhIjoiY2lsbXZjeWFlNjhjZXZmbWNyNHFnazJ3NyJ9.9K9rfFi1YkKjH3k6-XViyg';
+
+var topographic = L.tileLayer('https://api.mapbox.com/styles/v1/tidetech/cilmwyp07001i9klyi7lcskzp/tiles/{z}/{x}/{y}?access_token='+mapboxToken, {
+    attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    tileSize: 512,
+    zoomOffset: -1,
+    noWrap: true 
+});
+
+var gray = L.tileLayer('https://api.mapbox.com/styles/v1/tidetech/ciln08d8d002u9nkukp904hog/tiles/{z}/{x}/{y}?access_token='+mapboxToken, {
+    attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    tileSize: 512,
+    zoomOffset: -1,
+    noWrap: true 
+});
+
+var imagery = L.tileLayer('https://a.tiles.mapbox.com/v4/tidetech.1d1b6f6c/{z}/{x}/{y}.png?access_token='+oldToken, {
+    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
+    noWrap: true
+});
+/*
+var other1 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-60sz3p1x/{z}/{x}/{y}.png', {
+    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
+    noWrap: true
+});
+var other2 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-lap35hvn/{z}/{x}/{y}.png', {
+    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
+    noWrap: true
+});
+var other3 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-0c8lhnhe/{z}/{x}/{y}.png', {
+    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
+    noWrap: true
+});
+*/
 var baseMaps = {
-    "Grayscale": gray,
-    "Oceans": oceans,
     "Imagery": imagery,
-    "Polestar": polestarBase
+    "Topographic": topographic,
+    "Gray": gray/*,
+    "mapbox1": other1,
+    "mapbox2": other2,
+    "mapbox3": other3,
+    "ESRI Grayscale": ESRIgray,
+    "ESRI Oceans": oceans,
+    "ESRI Imagery": ESRIimagery*/
 };
 
 var center = new L.LatLng(20.38582, 29.35546),
 	startZoom = 3,
     p1 = L.latLng(74.01954, 142.38281),
     p2 = L.latLng(-57.61010, -83.67185),
-    initialBounds = L.latLngBounds(p1, p2);
+    initialBounds = L.latLngBounds(p1, p2),
+    mapBounds = L.latLngBounds(L.latLng(-80,-180),L.latLng(80,180));
 
 if(!initialBaseLayer) {
-    initialBaseLayer = "Grayscale";
+    initialBaseLayer = "Topographic";
 };
 
 var map = L.map("map", {
 	zoom: startZoom,
 	center: center,
 	layers: baseMaps[initialBaseLayer],
+    maxBounds: mapBounds,
+    maxBoundsViscosity: 0.5,
 	zoomControl: true,
 	attributionControl: false,
-    maxBoundsViscosity: 1.0,
     timeDimension: true,
     timeDimensionControlOptions: {
         autoPlay: false,
