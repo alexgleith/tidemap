@@ -1,6 +1,7 @@
 const 	defaultServer = "http://wms.tidetech.org",
 	    tt_att = 'data &copy TideTech',
         ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'],
+        noDataValues = ["-1.00", "-32768.00", "-8.999999873090293e+33"],
         defaultWorkspace = 'tidetech';
 
 var initialLayer = getParameterByName('layer'),
@@ -25,13 +26,17 @@ owsurl = server + "/geoserver/"+workspace+"/ows";
 
 var opacity = 1.0;
 
-//Get our list of layers really early.
-$.ajax({
-    type: "GET",
-    url: owsurl + "?SERVICE=WMS&request=getcapabilities",
-    dataType: "xml",
-    success: parseXml
-});
+//A bunch of variables for map stuff.
+var timeControl,
+    overlay,
+    timeOverlay,
+    supportsTime = false,
+    dataProducts = [],
+    currentBounds = initialBounds,
+    currentLayer = null,
+    currentLayerID = null,
+    clickMarker = null,
+    clickLatLng = null;
 
 //Leaflet images config:
 L.Icon.Default.imagePath = './scripts/images'
@@ -78,7 +83,7 @@ $("#legend-btn").click(function() {
   if(currentLayerID) {
     text += "<b>" + dataProducts[currentLayerID].title + 
     "</b><br><img src="+owsurl+"?service=wms&request=getlegendgraphic&layer=" + 
-    dataProducts[currentLayerID].name + "&format=image/png&LEGEND_OPTIONS=forceLabels:on onError=\"this.parentNode.removeChild(this)\"><br>";
+    dataProducts[currentLayerID].name + "&format=image/png&LEGEND_OPTIONS=forceLabels:on;fontAntiAliasing:true onError=\"this.parentNode.removeChild(this)\"><br>";
   }
   text += "<p>Note that some layers do not currently have a legend.</p>"
   $("#legend").html(text);
@@ -97,17 +102,22 @@ $("#sidebar-toggle-btn").click(function() {
   return false;
 });
 
+$("#searchclear").click(function(){
+    $("#layerfilter").val('');
+    $('.searchable tr').show();
+});
+
 $(document).on("click", ".feature-row", function(e) {
     $(this).addClass('info').siblings().removeClass('info');
-	loadDataProduct($(this).attr('id'));
+    loadDataProduct($(this).attr('id'));
     var width = (window.innerWidth > 0) ? window.innerWidth : screen.width;
-    if (width < 600) {
+    if (width < 800) {
         $('#sidebar').hide();
         map.invalidateSize();
     }
 });
 
-//Searching for layers
+//Document events
 $(document).ready(function () {
     (function ($) {
         $("a#opacityChange").on('click', function(e) {
@@ -130,39 +140,27 @@ $(document).ready(function () {
     }(jQuery));
 });
 
-$("#searchclear").click(function(){
-    $("#layerfilter").val('');
-    $('.searchable tr').show();
-});
+//Google Places Autocomplete
+var input = (
+document.getElementById('searchbox'));
+var autocomplete = new google.maps.places.Autocomplete(input);
+autocomplete.addListener('place_changed', function() {
+    var place = autocomplete.getPlace();
 
-//Do the map thing!
-/*
-var ESRIgray = L.tileLayer('http://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'basemap: Esri, HERE, DeLorme, MapmyIndia, &copy OpenStreetMap contributors, and the GIS user community',
-    noWrap: true
+    // If the place has a geometry, then present it on a map.
+    if (place.geometry.viewport) {
+        var b = place.geometry.viewport.toJSON();
+        var southWest = L.latLng(b.south, b.west),
+            northEast = L.latLng(b.north, b.east),
+            bounds = L.latLngBounds(southWest, northEast);
+        map.fitBounds(bounds);
+    } else {
+        //it's just a point, guess the zoom level.
+        var lng = place.geometry.location.lng(),
+            lat = place.geometry.location.lat();
+        map.setView([lat, lng], 12);
+    }
 });
-
-var oceans = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'basemap: Esri, DeLorme, GEBCO, NOAA NGDC, and other contributors',
-    noWrap: true
-});
-
-var ESRIimagery = L.tileLayer('http://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
-    noWrap: true
-});
-*/
-/*
-var polestarBase = L.tileLayer.wms('https://wms-1.lrit.com/cmapwms/map.cnx?', {
-    layers: 'MAINMAP',
-    attribution: 'Polestar',
-    noWrap: true
-});
-*/
-
-//mapbox://styles/tidetech/cilmwyp07001i9klyi7lcskzp
-
-//mapbox://styles/tidetech/ciln08d8d002u9nkukp904hog
 
 var mapboxToken = 'pk.eyJ1IjoidGlkZXRlY2giLCJhIjoiY2lsbjA2YjJiMDA1ZnVobTF0anV3ZG95MSJ9.srurUP-3MjppGVxp5UlySQ';
 var oldToken = 'pk.eyJ1IjoidGlkZXRlY2giLCJhIjoiY2lsbXZjeWFlNjhjZXZmbWNyNHFnazJ3NyJ9.9K9rfFi1YkKjH3k6-XViyg';
@@ -174,18 +172,17 @@ var topographic = L.tileLayer('https://api.mapbox.com/styles/v1/tidetech/cilmwyp
     noWrap: true 
 });
 
+var imagery = L.tileLayer('https://a.tiles.mapbox.com/v4/tidetech.4a953c78/{z}/{x}/{y}.png?access_token='+oldToken, {
+    attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    noWrap: true
+});
+/*
 var gray = L.tileLayer('https://api.mapbox.com/styles/v1/tidetech/ciln08d8d002u9nkukp904hog/tiles/{z}/{x}/{y}?access_token='+mapboxToken, {
     attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     tileSize: 512,
     zoomOffset: -1,
     noWrap: true 
 });
-
-var imagery = L.tileLayer('https://a.tiles.mapbox.com/v4/tidetech.1d1b6f6c/{z}/{x}/{y}.png?access_token='+oldToken, {
-    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
-    noWrap: true
-});
-/*
 var other1 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-60sz3p1x/{z}/{x}/{y}.png', {
     attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
     noWrap: true
@@ -201,14 +198,11 @@ var other3 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-0c8lhnhe/{z
 */
 var baseMaps = {
     "Imagery": imagery,
-    "Topographic": topographic,
-    "Gray": gray/*,
+    "Topographic": topographic/*,
+    "Gray": gray,
     "mapbox1": other1,
     "mapbox2": other2,
-    "mapbox3": other3,
-    "ESRI Grayscale": ESRIgray,
-    "ESRI Oceans": oceans,
-    "ESRI Imagery": ESRIimagery*/
+    "mapbox3": other3,*/
 };
 
 var center = new L.LatLng(20.38582, 29.35546),
@@ -223,8 +217,6 @@ if(!initialBaseLayer) {
 };
 
 var map = L.map("map", {
-	zoom: startZoom,
-	center: center,
 	layers: baseMaps[initialBaseLayer],
     maxBounds: mapBounds,
     maxBoundsViscosity: 0.5,
@@ -235,7 +227,6 @@ var map = L.map("map", {
         autoPlay: false,
         timeSteps: 1,
         playReverseButton: false,
-        limitSliders: true,
         playButton: false,
         loopButton: false,
         displayDate: true,
@@ -251,7 +242,16 @@ var map = L.map("map", {
         }
     },
     timeDimensionControl: true
+}).on('load', function(e) {
+    //Get our list of layers ready once the map is finished being built.
+    $.ajax({
+        type: "GET",
+        url: owsurl + "?SERVICE=WMS&request=getcapabilities",
+        dataType: "xml",
+        success: parseXml
+    });
 });
+map.setView(center, startZoom).spin(true);
 
 //Locate control
 var lc = L.control.locate({
@@ -264,29 +264,23 @@ var lc = L.control.locate({
 //Layer control
 L.control.layers(baseMaps, {}, {collapsed: false}).addTo(map);
 
-//Google Places Autocomplete
-var input = (
-document.getElementById('searchbox'));
-var autocomplete = new google.maps.places.Autocomplete(input);
-autocomplete.addListener('place_changed', function() {
-	var place = autocomplete.getPlace();
-
-	// If the place has a geometry, then present it on a map.
-	if (place.geometry.viewport) {
-		var b = place.geometry.viewport.toJSON();
-		var southWest = L.latLng(b.south, b.west),
-		    northEast = L.latLng(b.north, b.east),
-		    bounds = L.latLngBounds(southWest, northEast);
-		map.fitBounds(bounds);
-	} else {
-		//it's just a point, guess the zoom level.
-		var lng = place.geometry.location.lng(),
-			lat = place.geometry.location.lat();
-		map.setView([lat, lng], 12);
-	}
+//Event responses.
+map.on('click', function(e) {
+    if(currentLayer) {
+        clickLatLng = e.latlng;
+        updateMarker();
+    }
 });
 
-//get and set URL parameters
+map.timeDimension.on('timeload', function(e) {
+	updateMarker();
+});
+
+map.on('baselayerchange', function(e) {
+    setParameter('baseLayer', e.name);
+})
+
+//A bunch of functions
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -318,31 +312,25 @@ function setParameter(paramName, paramValue) {
     window.history.replaceState({},"", url + hash);
 }
 
-//Do the mappy stuff part two. Find some layers and map them.
-var timeControl,
-	overlay,
-	timeOverlay,
-	supportsTime = false,
-	dataProducts = [],
-    currentBounds = initialBounds,
-	currentLayer = null,
-    currentLayerID = null,
-	clickMarker = null,
-	clickLatLng = null;
-
 function handleJson(data) {
-	if(!data || data.features.length < 1){
-		return;
-	}
+    if(!data || data.features.length < 1){
+        return;
+    }
     var text = '<div class="table-responsive"><table class="table table-condensed">';
-	text = text + '<tr><th>Attribute</th><th>Value</th></tr>'
+    //text = text + '<tr><th>Attribute</th><th>Value</th></tr>'
     var thisFeatureProperties = data.features[0].properties;
     for (var i = data.features.length - 1; i >= 0; i--) {
         thisFeatureProperties = data.features[i].properties;
         Object.keys(thisFeatureProperties).forEach(function(key,index) {
             var ignore = $.inArray(key, ignoreValues);
             if(ignore === -1) {
-                text = text + "<tr><td>" + key.split(':')[0] + "</td><td>" + thisFeatureProperties[key].toFixed(2) + '</td>';
+                var value = thisFeatureProperties[key].toFixed(2);
+                var ignore = $.inArray(value, noDataValues);
+                if(ignore !== -1) {
+                    //Clear out the nodata values.
+                    value = "";
+                }
+                text = text + "<tr><td>" + key.split(':')[0] + "</td><td>" + value + '</td>';
             }
         });
     };
@@ -350,25 +338,42 @@ function handleJson(data) {
     
     //var newMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
     if (clickMarker && clickMarker.getLatLng().equals(clickLatLng)) {
-    	clickMarker.setPopupContent(text);
+        clickMarker.setPopupContent(text);
     } else {
-    	if(clickMarker) {
-    		map.removeLayer(clickMarker);
+        if(clickMarker) {
+            map.removeLayer(clickMarker);
             clickMarker = null;
-    	};
-    	clickMarker = new L.marker(clickLatLng).addTo(map).bindPopup(text).openPopup();
+        };
+        clickMarker = new L.marker(clickLatLng, {draggable: true}).addTo(map).bindPopup(text).openPopup();
+        clickMarker.on("drag", function(e) {
+            clickLatLng = e.target.getLatLng();
+            updateMarker();
+            clickMarker.openPopup();
+        });
+        clickMarker.on("dragend", function(e) {
+            clickLatLng = e.target.getLatLng();
+            updateMarker();
+            clickMarker.openPopup();
+        });
     }
 }
 
 function updateMarker() {
     if(!overlay || !clickLatLng){
-    	return;
+        return;
     }
-	var	lng = clickLatLng.lng,
-    	lat = clickLatLng.lat;
+    var lng = clickLatLng.lng,
+        lat = clickLatLng.lat;
     
     if (typeof lng == 'undefined') {
-    	return;
+        return;
+    }
+    //If the marker is out of the current map bounds, remove the marker and stop.
+    if(clickLatLng && !map.getBounds().contains(clickLatLng)) {
+        map.removeLayer(clickMarker);
+        clickMarker = null;
+        clickLatLng = null;
+        return;
     }
 
     var parameters = {
@@ -388,8 +393,8 @@ function updateMarker() {
         bbox: (lng - 0.1) + "," + (lat - 0.1) + "," + (lng + 0.1) + "," + (lat + 0.1)
     };
     if(supportsTime) {
-    	var time = new Date(map.timeDimension.getCurrentTime())
-    	parameters.time = time.toISOString();
+        var time = new Date(map.timeDimension.getCurrentTime())
+        parameters.time = time.toISOString();
     };
     var url = owsurl + L.Util.getParamString(parameters)
     $.ajax({
@@ -402,47 +407,6 @@ function updateMarker() {
     });
 }
 
-//Event responses.
-map.on('popupclose', function(e) {
-
-    try {
-        map.removeLayer(clickMarker);
-        clickMarker = null;
-    } catch (e) {
-        //do nothing
-    }
-    if(clickLatLng) {
-        clickLatLng = null;
-    }
-})
-
-map.on('click', function(e) {
-    clickLatLng = e.latlng;
-    updateMarker()
-});
-
-map.timeDimension.on('timeload', function(e) {
-	updateMarker();
-});
-/*
-map.on('movestart', function(e) {
-	if(supportsTime) {
-		timeControl._player.pause();
-	}
-});
-
-map.on('moveend', function(e) {
-	if(supportsTime) {
-		timeControl._player.continue();
-	}
-});
-*/
-
-map.on('baselayerchange', function(e) {
-    setParameter('baseLayer', e.name);
-})
-
-//Load all the data products
 function buildListOfData() {
     dataProducts.sort(function(a, b) {
         var textA = a.title.toUpperCase();
@@ -515,11 +479,14 @@ function parseXml(xml) {
     filterDataProductsInGroup();
     //Build the nice UI sidebar table list thing.
   	buildListOfData();
+    //Finish spinning.
+    map.spin(false);
     //Check for initial layer, and if requested, load it.
     if(initialLayer) {
         for (var i = dataProducts.length - 1; i >= 0; i--) {
             if(dataProducts[i].name === initialLayer) {
                 loadDataProduct(i);
+                $('#'+i).addClass('info');
             }
         }
     }

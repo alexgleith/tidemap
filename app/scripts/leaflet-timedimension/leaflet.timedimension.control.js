@@ -348,6 +348,8 @@ L.Control.TimeDimension = L.Control.extend({
                 var date = new Date(time);
                 this._displayDate.innerHTML = this._getDisplayDateFormat(date);
             }
+            var value = e.target.getValue();
+            this._sliderTimeValueChanged(value);
         }, this);
 
         knob.on('predrag', function () {

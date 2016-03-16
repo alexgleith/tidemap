@@ -10,7 +10,8 @@
     "leaflet.locatecontrol": "^0.48.0",
     "jquery-ui-touch-punch": "*",
     "Leaflet.NonTiledLayer": "https://github.com/ptv-logistics/Leaflet.NonTiledLayer.git#^0.7.3",
-    "iso8601-js-period": "*"
+    "iso8601-js-period": "*",
+    "leaflet-spin": "^0.1.1"
   },
   "overrides": {
     "bootstrap": {
