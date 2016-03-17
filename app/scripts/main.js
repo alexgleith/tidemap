@@ -1,4 +1,4 @@
-const 	defaultServer = "http://wms.tidetech.org",
+const 	defaultServer = "http://wms-ireland.tidetech.xyz",
 	    tt_att = 'data &copy TideTech',
         ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'],
         noDataValues = ["-1.00", "-32768.00", "-8.999999873090293e+33"],
@@ -68,6 +68,19 @@ $("#login-btn").click(function() {
 $("#settings-btn").click(function() {
   $(".navbar-collapse.in").collapse("hide");
     $("#settingsModal").modal("show");
+    return false;
+});
+
+$("#drop-pin-btn").click(function() {
+    var temp = 123.123;
+    clickLatLng = map.getCenter();
+    updateMarker();
+    return false;
+});
+$("#other-drop-pin-btn").click(function() {
+    var temp = 123.123;
+    clickLatLng = map.getCenter();
+    updateMarker();
     return false;
 });
 
@@ -316,8 +329,34 @@ function handleJson(data) {
     if(!data || data.features.length < 1){
         return;
     }
-    var text = '<div class="table-responsive"><table class="table table-condensed">';
+    var lat = clickLatLng.lat.toString(),
+        lon = clickLatLng.lng.toString(),
+        lat_d = lat.split('.')[0],
+        lon_d = lon.split('.')[0],
+        lat_m = (parseFloat('0.'+lat.split('.')[1])*60).toFixed(3).toString(),
+        lon_m = (parseFloat('0.'+lon.split('.')[1])*60).toFixed(3).toString(),
+        lat_text = 'n',
+        lon_text = 'e';
+    if(lat_d.charAt(0) === '-') {
+        lat_d = lat_d.slice(1);
+        lat_text = 's';
+    }
+    if(lon_d.charAt(0) === '-') {
+        lon_d = lon_d.slice(1);
+        lon_text = 'w';
+    }
+    //make all these things the right length
+    lat_d = String("   " + lat_d).slice(-3);
+    lon_d = String("   " + lon_d).slice(-3);
+    lat_m = String("00" + lat_m).slice(-6);
+    lon_m = String("00" + lon_m).slice(-6);
+    var lat_string = lat_d + '\xB0 ' + lat_m + '\' ' + lat_text,
+        lon_string = lon_d + '\xB0 ' + lon_m + '\' ' + lon_text;
+
+    var text = '<div class="table-responsive"><table class="table table-condensed ">';
     //text = text + '<tr><th>Attribute</th><th>Value</th></tr>'
+    text += '<tr><td>Latitude</td><td class="pull-right">' + lat_string + '</td>';
+    text += '<tr><td>Longitude</td><td class="pull-right">'+ lon_string + '</td>';
     var thisFeatureProperties = data.features[0].properties;
     for (var i = data.features.length - 1; i >= 0; i--) {
         thisFeatureProperties = data.features[i].properties;
@@ -344,7 +383,7 @@ function handleJson(data) {
             map.removeLayer(clickMarker);
             clickMarker = null;
         };
-        clickMarker = new L.marker(clickLatLng, {draggable: true}).addTo(map).bindPopup(text).openPopup();
+        clickMarker = new L.marker(clickLatLng, {title: "Drag me", draggable: true}).addTo(map).bindPopup(text).openPopup();
         clickMarker.on("drag", function(e) {
             clickLatLng = e.target.getLatLng();
             updateMarker();
