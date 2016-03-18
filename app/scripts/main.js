@@ -1,4 +1,4 @@
-const 	defaultServer = "http://wms-ireland.tidetech.xyz",
+const 	defaultServer = "http://wms.tidetech.xyz",
 	    tt_att = 'data &copy TideTech',
         ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'],
         noDataValues = ["-1.00", "-32768.00", "-8.999999873090293e+33"],
@@ -423,7 +423,7 @@ function updateMarker() {
         query_layers : currentLayer,
         feature_count : 10,
         info_format : 'text/javascript',
-        format_options : 'callback:getJson',
+        format_options : 'callback:handleJson',
         SrsName : 'EPSG:4326',
         width: 101,
         height: 101,
@@ -439,7 +439,6 @@ function updateMarker() {
     $.ajax({
         url : owsurl + L.Util.getParamString(parameters),
         dataType : 'jsonp',
-        jsonpCallback : 'getJson',
         success : function(data) {
             handleJson(data);
         }
