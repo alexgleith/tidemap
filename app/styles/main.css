@@ -53,7 +53,7 @@ body {
   background-color: #1D2237;
 }
 #sidebar {
-  width: 250px;
+  width: 300px;
   height: 100%;
   max-width: 100%;
   float: left;
@@ -89,11 +89,12 @@ body {
   width: 100%;
   height: 100%;
   position: relative;
+  overflow: auto;
 }
 .sidebar-table {
-  position: absolute;
+  position: relative;
   width: 100%;
-  top: 103px;
+  top: 0px;
   bottom: 0px;
   overflow: auto;
 }
@@ -135,6 +136,7 @@ body {
 }
 @media (max-width: 767px){
   #sidebar {
+    width: 250px;
     display: none;
   }
   .url-break {

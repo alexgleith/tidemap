@@ -27,8 +27,7 @@ owsurl = server + "/geoserver/"+workspace+"/ows";
 var opacity = 1.0;
 
 //A bunch of variables for map stuff.
-var timeControl,
-    overlay,
+var overlay,
     timeOverlay,
     supportsTime = false,
     dataProducts = [],
@@ -72,15 +71,11 @@ $("#settings-btn").click(function() {
 });
 
 $("#drop-pin-btn").click(function() {
-    var temp = 123.123;
-    clickLatLng = map.getCenter();
-    updateMarker();
+    markerButtonClicked();
     return false;
 });
 $("#other-drop-pin-btn").click(function() {
-    var temp = 123.123;
-    clickLatLng = map.getCenter();
-    updateMarker();
+    markerButtonClicked();
     return false;
 });
 
@@ -128,6 +123,11 @@ $(document).on("click", ".feature-row", function(e) {
         $('#sidebar').hide();
         map.invalidateSize();
     }
+});
+
+$(document).on("click", ".info-btn", function(e) {
+    $($(this).attr('id')).toggle();
+    e.stopPropagation();
 });
 
 //Document events
@@ -236,6 +236,9 @@ var map = L.map("map", {
 	zoomControl: true,
 	attributionControl: false,
     timeDimension: true,
+    timeDimensionOptions: {
+        loadingTimeout: 5000
+    }
     timeDimensionControlOptions: {
         autoPlay: false,
         timeSteps: 1,
@@ -294,6 +297,17 @@ map.on('baselayerchange', function(e) {
 })
 
 //A bunch of functions
+
+function markerButtonClicked() {
+    if(!clickMarker && currentLayerID) {
+        clickLatLng = map.getCenter();
+        updateMarker();
+    } else if(clickMarker) {
+        map.removeLayer(clickMarker);
+        clickMarker = null;
+        clickLatLng = null;
+    }
+}
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -346,8 +360,6 @@ function handleJson(data) {
         lon_text = 'w';
     }
     //make all these things the right length
-    lat_d = String("   " + lat_d).slice(-3);
-    lon_d = String("   " + lon_d).slice(-3);
     lat_m = String("00" + lat_m).slice(-6);
     lon_m = String("00" + lon_m).slice(-6);
     var lat_string = lat_d + '\xB0 ' + lat_m + '\' ' + lat_text,
@@ -357,12 +369,17 @@ function handleJson(data) {
     //text = text + '<tr><th>Attribute</th><th>Value</th></tr>'
     text += '<tr><td>Latitude</td><td class="pull-right">' + lat_string + '</td>';
     text += '<tr><td>Longitude</td><td class="pull-right">'+ lon_string + '</td>';
+
+    //remove duplicate attrbutes, happens with layer groups
+    var foundAttributes = [];
     var thisFeatureProperties = data.features[0].properties;
     for (var i = data.features.length - 1; i >= 0; i--) {
         thisFeatureProperties = data.features[i].properties;
         Object.keys(thisFeatureProperties).forEach(function(key,index) {
-            var ignore = $.inArray(key, ignoreValues);
-            if(ignore === -1) {
+            var ignore1 = $.inArray(key, ignoreValues);
+            var ignore2 = $.inArray(key, foundAttributes);
+            if(ignore1 === -1 && ignore2 === -1) {
+                foundAttributes.push(key);
                 var value = thisFeatureProperties[key].toFixed(2);
                 var ignore = $.inArray(value, noDataValues);
                 if(ignore !== -1) {
@@ -453,14 +470,16 @@ function buildListOfData() {
     });
 	for (var i = dataProducts.length - 1; i >= 0; i--) {
 		var dp = dataProducts[i];
-		$("#feature-list tbody").append('<tr class="feature-row" id="' + i +
-			'"><td class="feature-name">' + dp.title + 
-			'</td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
+		$("#feature-list tbody").append('<tr class="feature-row" id="' + i + '"><td class="feature-name">' + dp.title + 
+			'</td><td style="vertical-align: middle;"><button class="info-btn btn btn-default btn-xs" data-toggle="collapse" id="#info' + i + '" ><span class="fa fa-info-circle"></span></button></td></tr>'+
+            '<tr id="info'+ i + '" class="collapse out"><td colspan=2><div class="panel panel-default  accordion-toggle"><div class="panel-body">' + dp.abstract + '</div></div>'
+            +'</td></tr>');
 	};
 }
 
 function filterDataProductsInGroup() {
     var allSubLayers = [];
+    var oldSubLayers = {};
     for (var i = dataProducts.length - 1; i >= 0; i--) {
         var item = dataProducts[i];
         if(item.subLayerNames.length > 0) {
@@ -473,17 +492,30 @@ function filterDataProductsInGroup() {
         var subLayerName = allSubLayers[i];
         for (var j = dataProducts.length - 1; j >= 0; j--) {
             if(dataProducts[j].name === subLayerName) {
-                var temp = dataProducts[j].name;
+                oldSubLayers[subLayerName] = dataProducts[j];
                 dataProducts.splice(j, 1);
             }
         }
     }
+    /*for (var i = dataProducts.length - 1; i >= 0; i--) {
+        var dp = dataProducts[i];
+        if(dp.subLayerNames.length > 0) {
+            var newAbstract = '<p><small>This is a composite layer formed from the following data products:</small></p>';
+            for (var j = dp.subLayerNames.length - 1; j >= 0; j--) {
+                newAbstract += '<p><strong>' + oldSubLayers[dp.subLayerNames[j]].title + '</strong></p><p>' + oldSubLayers[dp.subLayerNames[j]].abstract + '</p>';
+            }
+            dp.abstract = newAbstract;
+        }
+    }*/
 }
 
 function parseXml(xml) {
  	$(xml).find("Layer").find("Layer").each(function() {
 		var thisDataProduct = {};
 	    var title = $(this).find("Title").first().text();
+        title = title.replace(/_/g, ' ');
+        var abstract = $(this).find("Abstract").first().text();
+        if(!abstract) {abstract = 'No abstract available.';}
 	    var name = $(this).find("Name").first().text();
         var west = $(this).find("westBoundLongitude").text(),
             east = $(this).find("eastBoundLongitude").text(),
@@ -510,6 +542,7 @@ function parseXml(xml) {
 	    thisDataProduct.name = name;
 	    thisDataProduct.time = time;
         thisDataProduct.bounds = bounds;
+        thisDataProduct.abstract = abstract;
 
 	    dataProducts.push(thisDataProduct);
   	});
