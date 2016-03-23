@@ -1,4 +1,4 @@
-const 	defaultServer = "http://wms.tidetech.xyz",
+const 	defaultServer = "http://wms.tidetech.org",
 	    tt_att = 'data &copy TideTech',
         ignoreValues = ['u' ,'v' ,'U_GRD' ,'V_GRD' , 'UGRDPW', 'VGRDPW', 'UGRDWV', 'VGRDWV', "UGRDSWELL", 'VGRDSWELL'],
         noDataValues = ["-1.00", "-32768.00", "-8.999999873090293e+33"],
