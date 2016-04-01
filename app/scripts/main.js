@@ -233,12 +233,13 @@ var map = L.map("map", {
 	layers: baseMaps[initialBaseLayer],
     maxBounds: mapBounds,
     maxBoundsViscosity: 0.5,
+    maxZoom: 13,
 	zoomControl: true,
 	attributionControl: false,
     timeDimension: true,
     timeDimensionOptions: {
         loadingTimeout: 5000
-    }
+    },
     timeDimensionControlOptions: {
         autoPlay: false,
         timeSteps: 1,
@@ -401,10 +402,15 @@ function handleJson(data) {
             clickMarker = null;
         };
         clickMarker = new L.marker(clickLatLng, {title: "Drag me", draggable: true}).addTo(map).bindPopup(text).openPopup();
+        clickMarker.lastMove = 0;
         clickMarker.on("drag", function(e) {
             clickLatLng = e.target.getLatLng();
-            updateMarker();
-            clickMarker.openPopup();
+            if(Date.now() - clickMarker.lastMove > 350) {
+                // Update with a AJAX request
+                clickMarker.lastMove = Date.now();
+                updateMarker();
+                clickMarker.openPopup();
+            }
         });
         clickMarker.on("dragend", function(e) {
             clickLatLng = e.target.getLatLng();
@@ -497,16 +503,6 @@ function filterDataProductsInGroup() {
             }
         }
     }
-    /*for (var i = dataProducts.length - 1; i >= 0; i--) {
-        var dp = dataProducts[i];
-        if(dp.subLayerNames.length > 0) {
-            var newAbstract = '<p><small>This is a composite layer formed from the following data products:</small></p>';
-            for (var j = dp.subLayerNames.length - 1; j >= 0; j--) {
-                newAbstract += '<p><strong>' + oldSubLayers[dp.subLayerNames[j]].title + '</strong></p><p>' + oldSubLayers[dp.subLayerNames[j]].abstract + '</p>';
-            }
-            dp.abstract = newAbstract;
-        }
-    }*/
 }
 
 function parseXml(xml) {
@@ -598,7 +594,7 @@ function loadDataProduct(dataProductID) {
 	overlay = new L.NonTiledLayer.WMS(owsurl, {
         opacity: opacity,
         layers: currentLayer,
-        format: 'image/png',
+        format: 'image/png8',
         transparent: true,
         attribution: tt_att,
         noWrap: true
@@ -616,21 +612,6 @@ function loadDataProduct(dataProductID) {
 		}
 		map.timeDimension.setAvailableTimes(timeStepsForMap,'replace');
         map.timeDimension.setCurrentTimeIndex(0)
-        /*
-		timeControl = L.control.timeDimension({
-            autoPlay: false,
-            loopButton: true,
-            timeSteps: 1,
-            playReverseButton: false,
-            limitSliders: true,
-            playerOptions: {
-                buffer: 25,
-                transitionTime: 500,
-                loop: true,
-                minBufferReady: 20
-            }
-        }).addTo(map);
-        */
 
 		timeOverlay = L.timeDimension.layer.wms(overlay, {}).addTo(map);
 	} else {
@@ -644,6 +625,12 @@ function loadDataProduct(dataProductID) {
     var width = dataProduct.bounds.getEast() - dataProduct.bounds.getWest();
     if(width < 350) {
         map.fitBounds(dataProduct.bounds);
+    } else {
+        //We've got a global layer, so if we're zoomed in close, zoom out a bit
+        var curZoom = map.getZoom();
+        if(curZoom > 7) {
+            map.setZoom(6);
+        }
     }
     //and set the URL
     setParameter('layer',dataProduct.name)
