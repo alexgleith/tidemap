@@ -233,7 +233,7 @@ var map = L.map("map", {
 	layers: baseMaps[initialBaseLayer],
     maxBounds: mapBounds,
     maxBoundsViscosity: 0.5,
-    maxZoom: 13,
+    maxZoom: 15,
 	zoomControl: true,
 	attributionControl: false,
     timeDimension: true,
