@@ -9,7 +9,8 @@
     "leaflet.locatecontrol": "^0.48.0",
     "Leaflet.NonTiledLayer": "https://github.com/ptv-logistics/Leaflet.NonTiledLayer.git#^0.7.3",
     "iso8601-js-period": "*",
-    "leaflet-spin": "^0.1.1"
+    "leaflet-spin": "^0.1.1",
+    "bootstrap-table": "^1.10.1"
   },
   "overrides": {
     "bootstrap": {
