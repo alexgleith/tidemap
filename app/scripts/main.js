@@ -31,6 +31,7 @@ var overlay,
     timeOverlay,
     supportsTime = false,
     dataProducts = [],
+    dataTable = [],
     currentBounds = initialBounds,
     currentLayer = null,
     currentLayerID = null,
@@ -39,6 +40,14 @@ var overlay,
 
 //Leaflet images config:
 L.Icon.Default.imagePath = './scripts/images'
+
+//Starting configuration.
+var center = new L.LatLng(20.38582, 29.35546),
+    startZoom = 3,
+    p1 = L.latLng(74.01954, 142.38281),
+    p2 = L.latLng(-57.61010, -83.67185),
+    initialBounds = L.latLngBounds(p1, p2),
+    mapBounds = L.latLngBounds(L.latLng(-80,-185),L.latLng(80,185));
 
 $("#full-extent-btn").click(function() {
   $(".navbar-collapse.in").collapse("hide");
@@ -117,7 +126,7 @@ $("#searchclear").click(function(){
 
 $(document).on("click", ".feature-row", function(e) {
     $(this).addClass('info').siblings().removeClass('info');
-    loadDataProduct($(this).attr('id'));
+    loadDataProduct($(this).attr('data-uniqueid'));
     var width = (window.innerWidth > 0) ? window.innerWidth : screen.width;
     if (width < 800) {
         $('#sidebar').hide();
@@ -125,8 +134,7 @@ $(document).on("click", ".feature-row", function(e) {
     }
 });
 
-$(document).on("click", ".info-btn", function(e) {
-    $($(this).attr('id')).toggle();
+$(document).on("click", ".detail-icon", function(e) {
     e.stopPropagation();
 });
 
@@ -142,13 +150,6 @@ $(document).ready(function () {
                 if(overlay) {overlay.setOpacity(opacity);};
             }
             return false;
-        });
-        $('#layerfilter').keyup(function () {
-            var rex = new RegExp($(this).val(), 'i');
-            $('.searchable tr').hide();
-            $('.searchable tr').filter(function () {
-                return rex.test($(this).text());
-            }).show();
         });
     }(jQuery));
 });
@@ -218,15 +219,8 @@ var baseMaps = {
     "mapbox3": other3,*/
 };
 
-var center = new L.LatLng(20.38582, 29.35546),
-	startZoom = 3,
-    p1 = L.latLng(74.01954, 142.38281),
-    p2 = L.latLng(-57.61010, -83.67185),
-    initialBounds = L.latLngBounds(p1, p2),
-    mapBounds = L.latLngBounds(L.latLng(-80,-180),L.latLng(80,180));
-
 if(!initialBaseLayer) {
-    initialBaseLayer = "Topographic";
+    initialBaseLayer = "Imagery";
 };
 
 var map = L.map("map", {
@@ -297,8 +291,22 @@ map.on('baselayerchange', function(e) {
     setParameter('baseLayer', e.name);
 })
 
+//------------------//
 //A bunch of functions
+//------------------//
 
+//Table functions
+function rowStyle(row, index) {
+    return {
+        classes: 'feature-row'
+    }
+}
+function detailFormatter(index, row) {
+    var html = [];
+    return '<p>' + row.abstract + '</p>';
+}
+
+//Update the marker
 function markerButtonClicked() {
     if(!clickMarker && currentLayerID) {
         clickLatLng = map.getCenter();
@@ -309,6 +317,8 @@ function markerButtonClicked() {
         clickLatLng = null;
     }
 }
+
+//URL Parameter functions
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, "\\$&");
@@ -318,6 +328,7 @@ function getParameterByName(name, url) {
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
+
 function setParameter(paramName, paramValue) {
     var url = window.location.href;
     var hash = location.hash;
@@ -340,6 +351,7 @@ function setParameter(paramName, paramValue) {
     window.history.replaceState({},"", url + hash);
 }
 
+//Eat up the JSON returned by WMS request
 function handleJson(data) {
     if(!data || data.features.length < 1){
         return;
@@ -468,24 +480,9 @@ function updateMarker() {
     });
 }
 
-function buildListOfData() {
-    dataProducts.sort(function(a, b) {
-        var textA = a.title.toUpperCase();
-        var textB = b.title.toUpperCase();
-        return (textA > textB) ? -1 : (textA < textB) ? 1 : 0;
-    });
-	for (var i = dataProducts.length - 1; i >= 0; i--) {
-		var dp = dataProducts[i];
-		$("#feature-list tbody").append('<tr class="feature-row" id="' + i + '"><td class="feature-name">' + dp.title + 
-			'</td><td style="vertical-align: middle;"><button class="info-btn btn btn-default btn-xs" data-toggle="collapse" id="#info' + i + '" ><span class="fa fa-info-circle"></span></button></td></tr>'+
-            '<tr id="info'+ i + '" class="collapse out"><td colspan=2><div class="panel panel-default  accordion-toggle"><div class="panel-body">' + dp.abstract + '</div></div>'
-            +'</td></tr>');
-	};
-}
-
 function filterDataProductsInGroup() {
     var allSubLayers = [];
-    var oldSubLayers = {};
+    //Identify all the subLayers (layers that are below a layergroup)
     for (var i = dataProducts.length - 1; i >= 0; i--) {
         var item = dataProducts[i];
         if(item.subLayerNames.length > 0) {
@@ -494,11 +491,11 @@ function filterDataProductsInGroup() {
             }
         }
     }
+    //Remove all the sub-layers from the dataProducts list
     for (var i = allSubLayers.length - 1; i >= 0; i--) {
         var subLayerName = allSubLayers[i];
         for (var j = dataProducts.length - 1; j >= 0; j--) {
             if(dataProducts[j].name === subLayerName) {
-                oldSubLayers[subLayerName] = dataProducts[j];
                 dataProducts.splice(j, 1);
             }
         }
@@ -519,11 +516,28 @@ function parseXml(xml) {
             north = $(this).find("northBoundLatitude").text();
 
         var time = $(this).find("Dimension").text().split(',');
+        var group = "Other";
+        $(this).find("KeywordList").find("Keyword").each(function() {
+            var keyWord = $(this).text();
+            var keyWordSplit = keyWord.split(':');
+            if(keyWordSplit[0] === 'group') {
+                group = keyWordSplit[1].trim();
+            }
+        });
         var subLayerNames = [];
 
         //Handle sublayers
-        var subLayers = $(this).find("Layer").each(function() {
+        $(this).find("Layer").each(function() {
+            //Add time from sublayers
             time = $(this).find("Dimension").text().split(',');
+            //Add group from sublayers
+            $(this).find("KeywordList").find("Keyword").each(function() {
+                var keyWord = $(this).text();
+                var keyWordSplit = keyWord.split(':');
+                if(keyWordSplit[0] === 'group') {
+                    group = keyWordSplit[1];
+                }
+            });
             subLayerNames.push($(this).find("Name").first().text());
         });
         thisDataProduct.subLayerNames = subLayerNames;
@@ -539,13 +553,30 @@ function parseXml(xml) {
 	    thisDataProduct.time = time;
         thisDataProduct.bounds = bounds;
         thisDataProduct.abstract = abstract;
+        thisDataProduct.group = group;
 
 	    dataProducts.push(thisDataProduct);
   	});
+
     //Filter out layers that are in a group.
     filterDataProductsInGroup();
-    //Build the nice UI sidebar table list thing.
-  	buildListOfData();
+
+    var dataTable = [];
+    //Now add in a uniqueID for each data product.
+    for (var i = 0; i < dataProducts.length; i++) {
+        var dp = dataProducts[i];
+        var dtp = {
+            dataid: i,
+            group: dp.group,
+            title: dp.title,
+            abstract: dp.abstract
+        };
+        dataTable.push(dtp);
+    }
+    //Set up the table
+    $('#layer-list').bootstrapTable({
+        data: dataTable
+    });
     //Finish spinning.
     map.spin(false);
     //Check for initial layer, and if requested, load it.
@@ -553,7 +584,7 @@ function parseXml(xml) {
         for (var i = dataProducts.length - 1; i >= 0; i--) {
             if(dataProducts[i].name === initialLayer) {
                 loadDataProduct(i);
-                $('#'+i).addClass('info');
+                $('#layer-list').find("tr[data-uniqueid="+i+"]").addClass('info')
             }
         }
     }
@@ -566,17 +597,9 @@ function loadDataProduct(dataProductID) {
     var dataProduct = dataProducts[dataProductID];
     //Store some variables
     supportsTime = false;
-    
     currentLayerID = dataProductID;
 	currentLayer = dataProduct.name;
 
-    //Remove the existing items
-    /*try {
-        timeControl._player.stop();
-        map.removeControl(timeControl);
-    } catch (e) {
-        //do nothing
-    }*/
     if(clickMarker) {
         map.removeLayer(clickMarker);
         clickMarker = null;
