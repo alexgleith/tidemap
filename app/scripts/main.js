@@ -190,33 +190,18 @@ var imagery = L.tileLayer('https://a.tiles.mapbox.com/v4/tidetech.4a953c78/{z}/{
     attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     noWrap: true
 });
-/*
-var gray = L.tileLayer('https://api.mapbox.com/styles/v1/tidetech/ciln08d8d002u9nkukp904hog/tiles/{z}/{x}/{y}?access_token='+mapboxToken, {
-    attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    tileSize: 512,
-    zoomOffset: -1,
-    noWrap: true 
+
+var cmap = L.tileLayer.wms("https://wms-2.lrit.com/cmapwms/map.cnx", {
+    layers: 'MAINMAP',
+    format: 'image/png',
+    transparent: true,
+    attribution: "Basemap © Pole Star"
 });
-var other1 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-60sz3p1x/{z}/{x}/{y}.png', {
-    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
-    noWrap: true
-});
-var other2 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-lap35hvn/{z}/{x}/{y}.png', {
-    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
-    noWrap: true
-});
-var other3 = L.tileLayer('https://a.tiles.mapbox.com/v3/polestar.map-0c8lhnhe/{z}/{x}/{y}.png', {
-    attribution: 'basemap &copy: 2013 ESRI, i-cubed, GeoEye',
-    noWrap: true
-});
-*/
+
 var baseMaps = {
     "Imagery": imagery,
-    "Topographic": topographic/*,
-    "Gray": gray,
-    "mapbox1": other1,
-    "mapbox2": other2,
-    "mapbox3": other3,*/
+    "Topographic": topographic,
+    "C-Map": cmap
 };
 
 if(!initialBaseLayer) {
