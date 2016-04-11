@@ -122,7 +122,7 @@
                 
                 html.push('<td',
                     sprintf(' colspan="%s"', visibleColumns),
-                    '>', item.name, '</td>'
+                    '><strong>', item.name, '</strong></td>'
                 );
                 
                 html.push('</tr>');
