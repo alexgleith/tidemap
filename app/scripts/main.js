@@ -98,9 +98,22 @@ $("#legend-btn").click(function() {
   $(".navbar-collapse.in").collapse("hide");
   var text = "";
   if(currentLayerID) {
-    text += "<b>" + dataProducts[currentLayerID].title + 
-    "</b><br><img src="+owsurl+"?service=wms&request=getlegendgraphic&layer=" + 
-    dataProducts[currentLayerID].name + "&format=image/png&LEGEND_OPTIONS=forceLabels:on;fontAntiAliasing:true onError=\"this.parentNode.removeChild(this)\"><br>";
+    text += "<h3>" + dataProducts[currentLayerID].title + "</h3>"
+    var dataProduct = dataProducts[currentLayerID];
+
+    if(dataProduct.subLayerNames) {
+        var subLayerNames = dataProduct.subLayerNames;
+        var subLayerTitles = dataProduct.subLayerTitles;
+        for (var i = subLayerNames.length - 1; i >= 0; i--) {
+            var name = subLayerNames[i]
+            text += "<h4>" + subLayerTitles[i] + "</h4>"
+            text += "<br><img src="+owsurl+"?service=wms&request=getlegendgraphic&layer=" + 
+                    name + "&format=image/png&LEGEND_OPTIONS=forceLabels:on;fontAntiAliasing:true onError=\"this.parentNode.removeChild(this)\" align=\"middle\"><br>";
+        }
+    } else {
+        text += "<br><img src="+owsurl+"?service=wms&request=getlegendgraphic&layer=" + 
+                dataProduct.name + "&format=image/png&LEGEND_OPTIONS=forceLabels:on;fontAntiAliasing:true onError=\"this.parentNode.removeChild(this)\"><br>";
+    }
   }
   text += "<p>Note that some layers do not currently have a legend.</p>"
   $("#legend").html(text);
@@ -510,6 +523,7 @@ function parseXml(xml) {
             }
         });
         var subLayerNames = [];
+        var subLayerTitles = [];
 
         //Handle sublayers
         $(this).find("Layer").each(function() {
@@ -524,8 +538,10 @@ function parseXml(xml) {
                 }
             });
             subLayerNames.push($(this).find("Name").first().text());
+            subLayerTitles.push($(this).find("Title").first().text());
         });
         thisDataProduct.subLayerNames = subLayerNames;
+        thisDataProduct.subLayerTitles = subLayerTitles;
 
 	    //Check for layer groups
 	    var patt = new RegExp("Group");
